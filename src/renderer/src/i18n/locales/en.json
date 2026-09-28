@@ -18611,19 +18611,35 @@
       "save": "Save note"
     },
     "floor": {
-      "label": "Office floor",
-      "office": "Manager's office",
-      "cooler": "Water cooler",
-      "coffee": "Coffee",
-      "needsYou": "needs you",
-      "workingTool": "Working · {{tool}}",
-      "working": "Working",
-      "needsYouStatus": "Needs you",
-      "onBreak": "On a break",
-      "paused": "Paused",
-      "offline": "Offline",
+      "apartment": "Apartment",
+      "desks": "Desks by the window",
+      "board": "Whiteboard wall",
+      "living": "Living room",
+      "kitchen": "Kitchen",
+      "entry": "Entry",
+      "bedrooms": "Bedrooms",
+      "bedroomEmpty": "Nobody is resting.",
+      "sleeping": "z z",
+      "invite": "Invite a member in",
+      "elevator": "Elevator · out of order",
+      "noManager": "No manager yet",
+      "firstDesk": "Add your first member",
       "openDesk": "Open desk",
-      "emptyHint": "Add a member to fill a desk."
+      "mail": "New message",
+      "screen": {
+        "working": "▸ working",
+        "noTask": "no ticket assigned",
+        "waiting": "Needs your answer",
+        "away": "Away from desk",
+        "paused": "Paused",
+        "off": "Screen off"
+      },
+      "summary": {
+        "working": "{{count}} working",
+        "waiting": "{{count}} need you",
+        "idle": "{{count}} on a break",
+        "off": "{{count}} offline"
+      }
     },
     "voice": {
       "dictate": "Dictate",

@@ -3167,3 +3167,127 @@ html.native-shell .app-layout {
     inset 0 1px 0 0 color-mix(in srgb, var(--foreground) 5%, transparent),
     0 10px 24px rgba(0, 0, 0, 0.18);
 }
+
+/* Why: the Team floor is an apartment plan. The plan's background shows through the grid gaps as
+   walls; each room paints its own floor (boards or kitchen tiles) from existing tokens. */
+.team-office-plan {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--foreground) 16%, var(--background));
+}
+
+.team-office-plan > .team-office-room {
+  border-radius: calc(var(--radius-xl) - 4px);
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--foreground) 8%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 18px 18px;
+}
+
+.team-office-plan > .team-office-room[data-floor='tiles'] {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--foreground) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--foreground) 7%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 22px 22px;
+}
+
+@media (min-width: 1024px) {
+  .team-office-plan {
+    grid-template-columns: minmax(210px, 0.8fr) minmax(0, 1.5fr) minmax(0, 1.3fr);
+    grid-template-areas:
+      'kitchen living desks'
+      'entry living desks'
+      'bedrooms bedrooms board';
+  }
+
+  .team-office-plan > [data-area='kitchen'] {
+    grid-area: kitchen;
+  }
+  .team-office-plan > [data-area='entry'] {
+    grid-area: entry;
+  }
+  .team-office-plan > [data-area='living'] {
+    grid-area: living;
+  }
+  .team-office-plan > [data-area='desks'] {
+    grid-area: desks;
+  }
+  .team-office-plan > [data-area='bedrooms'] {
+    grid-area: bedrooms;
+  }
+  .team-office-plan > [data-area='board'] {
+    grid-area: board;
+  }
+}
+
+/* Why: the Team floor's cartoon cast needs skin, hair and clothing tones; they are mixed from the
+   declared palette tokens so both themes keep them readable without new raw colors. */
+.team-character {
+  transition: transform 2.4s ease-in-out;
+}
+
+.team-character .team-skin {
+  fill: color-mix(in srgb, var(--color-orange-300) 45%, white);
+}
+.team-character .team-hair-dark {
+  fill: color-mix(in srgb, var(--color-orange-700) 30%, black);
+}
+.team-character .team-hair-brown {
+  fill: color-mix(in srgb, var(--color-orange-700) 75%, black);
+}
+.team-character .team-hair-fair {
+  fill: color-mix(in srgb, var(--color-orange-300) 70%, var(--color-orange-500));
+}
+.team-character .team-shirt-0 {
+  fill: var(--color-destructive);
+}
+.team-character .team-shirt-1 {
+  fill: var(--color-blue-500);
+}
+.team-character .team-shirt-2 {
+  fill: var(--color-violet-500);
+}
+.team-character .team-shirt-3 {
+  fill: var(--color-status-success);
+}
+.team-character .team-shirt-4 {
+  fill: var(--color-orange-500);
+}
+.team-character .team-pants {
+  fill: color-mix(in srgb, var(--color-blue-800) 55%, black);
+}
+.team-character .team-ink {
+  fill: color-mix(in srgb, var(--color-blue-800) 15%, black);
+}
+.team-character .team-ink-stroke {
+  stroke: color-mix(in srgb, var(--color-blue-800) 15%, black);
+}
+
+.team-character[data-moving='true'] svg {
+  animation: team-character-walk 0.45s ease-in-out infinite alternate;
+}
+
+@keyframes team-character-walk {
+  from {
+    transform: translateY(0) rotate(-3deg);
+  }
+  to {
+    transform: translateY(-3px) rotate(3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .team-character {
+    transition: none;
+  }
+  .team-character[data-moving='true'] svg {
+    animation: none;
+  }
+}

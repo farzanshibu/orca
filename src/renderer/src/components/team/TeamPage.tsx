@@ -129,8 +129,10 @@ export default function TeamPage(): React.JSX.Element {
             <TabsContent value="floor" className="flex min-h-0">
               <TeamOfficeFloor
                 members={snapshot.members}
+                tasks={snapshot.tasks}
                 log={state.log}
                 onOpenRoom={setRoomMemberId}
+                onAddMember={() => setMemberOpen(true)}
               />
             </TabsContent>
             <TabsContent value="agents" className="min-h-0">
