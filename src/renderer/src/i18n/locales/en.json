@@ -18615,7 +18615,15 @@
       "office": "Manager's office",
       "cooler": "Water cooler",
       "coffee": "Coffee",
-      "needsYou": "needs you"
+      "needsYou": "needs you",
+      "workingTool": "Working · {{tool}}",
+      "working": "Working",
+      "needsYouStatus": "Needs you",
+      "onBreak": "On a break",
+      "paused": "Paused",
+      "offline": "Offline",
+      "openDesk": "Open desk",
+      "emptyHint": "Add a member to fill a desk."
     },
     "voice": {
       "dictate": "Dictate",

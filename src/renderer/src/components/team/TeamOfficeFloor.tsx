@@ -1,15 +1,16 @@
-import React, { useMemo } from 'react'
+import React, { useId, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
 import { translate } from '@/i18n/i18n'
 import {
-  COFFEE_STATION,
-  FLOOR_HEIGHT,
   FLOOR_WIDTH,
   MANAGER_OFFICE,
-  WATER_COOLER,
+  MIN_DESKS,
+  OFFICE_BOUNDS,
+  breakStations,
   deskFor,
   floorActivity,
+  floorHeight,
   positionFor,
   spriteVariant,
   type FloorActivity,
@@ -27,8 +28,13 @@ const SHIRT_FILLS = [
   'fill-primary',
   'fill-accent-foreground'
 ]
+const NAME_MAX_CHARS = 18
 
-/** An 8x12 pixel person; the shirt shade tells members apart without new colors. */
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text
+}
+
+/** An 8x12 pixel person drawn at 1.5x; origin is the feet. */
 function PixelPerson({
   variant,
   activity
@@ -38,7 +44,7 @@ function PixelPerson({
 }): React.JSX.Element {
   const shirt = SHIRT_FILLS[variant % SHIRT_FILLS.length]
   return (
-    <g shapeRendering="crispEdges" opacity={activity === 'off' ? 0.35 : 1}>
+    <g shapeRendering="crispEdges" opacity={activity === 'off' ? 0.4 : 1} transform="scale(1.5)">
       <rect x={-6} y={-24} width={12} height={4} className="fill-foreground" />
       <rect
         x={-6}
@@ -52,53 +58,145 @@ function PixelPerson({
       <rect x={-8} y={-12} width={16} height={12} className={shirt} />
       <rect x={-6} y={0} width={4} height={8} className="fill-foreground" />
       <rect x={2} y={0} width={4} height={8} className="fill-foreground" />
-      {activity === 'working' ? (
-        <rect x={-10} y={-6} width={20} height={3} className="animate-pulse fill-foreground" />
-      ) : null}
-      {activity === 'waiting' ? (
-        <rect x={8} y={-30} width={3} height={14} className="animate-bounce fill-foreground" />
-      ) : null}
     </g>
   )
 }
 
-function Desk({ at, label }: { at: FloorPoint; label: string }): React.JSX.Element {
+function statusLabel(activity: FloorActivity, paused: boolean, tool: string): string {
+  if (activity === 'working') {
+    return tool
+      ? translate('team.floor.workingTool', 'Working · {{tool}}', { tool: truncate(tool, 14) })
+      : translate('team.floor.working', 'Working')
+  }
+  if (activity === 'waiting') {
+    return translate('team.floor.needsYouStatus', 'Needs you')
+  }
+  if (activity === 'idle') {
+    return translate('team.floor.onBreak', 'On a break')
+  }
+  return paused
+    ? translate('team.floor.paused', 'Paused')
+    : translate('team.floor.offline', 'Offline')
+}
+
+/** Drawn over the sprites so a seated member's legs sit under the desk. */
+function Desk({
+  at,
+  name,
+  status,
+  activity
+}: {
+  at: FloorPoint
+  name: string | null
+  status: string
+  activity: FloorActivity | null
+}): React.JSX.Element {
+  const vacant = name === null
+  return (
+    <g transform={`translate(${at.x} ${at.y})`} pointerEvents="none">
+      <rect
+        x={-50}
+        y={-18}
+        width={100}
+        height={34}
+        rx={4}
+        className="fill-card stroke-border"
+        fillOpacity={vacant ? 0 : 1}
+        strokeDasharray={vacant ? '5 4' : undefined}
+      />
+      {vacant ? null : (
+        <>
+          <rect
+            x={-40}
+            y={-12}
+            width={26}
+            height={16}
+            rx={2}
+            className="fill-muted stroke-border"
+          />
+          {activity === 'working' ? (
+            <rect
+              x={-37}
+              y={-9}
+              width={20}
+              height={10}
+              rx={1}
+              className="animate-pulse fill-primary"
+              opacity={0.5}
+            />
+          ) : null}
+          <rect x={14} y={-8} width={10} height={10} rx={2} className="fill-muted" />
+        </>
+      )}
+      <text
+        y={36}
+        textAnchor="middle"
+        className={
+          vacant ? 'fill-muted-foreground text-[12px]' : 'fill-foreground text-[12px] font-medium'
+        }
+      >
+        {vacant ? translate('team.floor.openDesk', 'Open desk') : truncate(name, NAME_MAX_CHARS)}
+      </text>
+      {vacant ? null : (
+        <text
+          y={52}
+          textAnchor="middle"
+          className={
+            activity === 'waiting'
+              ? 'fill-foreground text-[11px] font-medium'
+              : 'fill-muted-foreground text-[11px]'
+          }
+        >
+          {status}
+        </text>
+      )}
+    </g>
+  )
+}
+
+function WaterCooler({ at }: { at: FloorPoint }): React.JSX.Element {
   return (
     <g transform={`translate(${at.x} ${at.y})`}>
-      <rect x={-44} y={-18} width={88} height={30} rx={4} className="fill-card stroke-border" />
-      <rect x={-14} y={-30} width={28} height={16} rx={2} className="fill-muted stroke-border" />
-      <text y={28} textAnchor="middle" className="fill-muted-foreground text-[11px]">
-        {label}
+      <rect x={-12} y={-44} width={24} height={26} rx={8} className="fill-primary" opacity={0.3} />
+      <rect x={-15} y={-18} width={30} height={34} rx={3} className="fill-muted stroke-border" />
+      <rect x={-4} y={-8} width={8} height={4} className="fill-muted-foreground" />
+      <text y={-56} textAnchor="middle" className="fill-muted-foreground text-[11px]">
+        {translate('team.floor.cooler', 'Water cooler')}
       </text>
     </g>
   )
 }
 
-function Station({ at, label }: { at: FloorPoint; label: string }): React.JSX.Element {
+function CoffeeStation({ at }: { at: FloorPoint }): React.JSX.Element {
   return (
     <g transform={`translate(${at.x} ${at.y})`}>
-      <rect x={-18} y={-26} width={36} height={40} rx={6} className="fill-muted stroke-border" />
-      <text y={30} textAnchor="middle" className="fill-muted-foreground text-[11px]">
-        {label}
+      <rect x={-22} y={-4} width={44} height={20} rx={3} className="fill-card stroke-border" />
+      <rect x={-16} y={-36} width={20} height={32} rx={3} className="fill-muted stroke-border" />
+      <rect x={-12} y={-30} width={12} height={6} className="fill-muted-foreground" />
+      <rect x={8} y={-14} width={9} height={10} rx={1} className="fill-muted-foreground" />
+      <text y={-56} textAnchor="middle" className="fill-muted-foreground text-[11px]">
+        {translate('team.floor.coffee', 'Coffee')}
       </text>
     </g>
   )
 }
 
 function Bubble({ at, text }: { at: FloorPoint; text: string }): React.JSX.Element {
-  const width = Math.min(160, 12 + text.length * 6.2)
+  const label = truncate(text, 24)
+  const width = Math.min(170, 16 + label.length * 6.4)
   return (
-    <g transform={`translate(${at.x} ${at.y - 58})`}>
+    <g transform={`translate(${at.x} ${at.y - 50})`}>
       <rect
         x={-width / 2}
-        y={-14}
+        y={-15}
         width={width}
-        height={20}
+        height={22}
         rx={6}
         className="fill-popover stroke-border"
       />
+      <path d="M-5,7 L0,13 L5,7 Z" className="fill-popover" />
       <text y={1} textAnchor="middle" className="fill-foreground text-[11px]">
-        {text.length > 24 ? `${text.slice(0, 23)}…` : text}
+        {label}
       </text>
     </g>
   )
@@ -113,6 +211,7 @@ export function TeamOfficeFloor({
   log: readonly TeamLogMessage[]
   onOpenRoom: (memberId: string) => void
 }): React.JSX.Element {
+  const gridId = useId()
   const now = useTeamClock(2_000)
   const toolByPane = useAppStore(
     useShallow((state) =>
@@ -125,18 +224,27 @@ export function TeamOfficeFloor({
       )
     )
   )
+  const staffCount = members.filter((member) => !member.is_manager).length
+  const height = floorHeight(staffCount)
+  const stations = useMemo(() => breakStations(height), [height])
   const placed = useMemo(() => {
     let deskIndex = 0
-    return members.map((member, index) => {
+    let idleIndex = 0
+    return members.map((member) => {
       const desk = deskFor(member.is_manager ? 0 : deskIndex++, member.is_manager === 1)
       const activity = floorActivity(
         member.liveness,
         member.agent_status,
         Boolean(member.paused_at)
       )
-      return { member, desk, activity, position: positionFor(desk, activity, index) }
+      const slot = activity === 'idle' ? idleIndex++ : 0
+      return { member, desk, activity, position: positionFor(desk, activity, slot, stations) }
     })
-  }, [members])
+  }, [members, stations])
+  const vacantDesks = Array.from({ length: Math.max(0, MIN_DESKS - staffCount) }, (_, index) =>
+    deskFor(staffCount + index, false)
+  )
+  const hasManager = placed.some((entry) => entry.member.is_manager)
   const deskByHandle = new Map(
     placed.flatMap((entry) =>
       entry.member.live_handle ? [[entry.member.live_handle, entry.desk]] : []
@@ -150,29 +258,47 @@ export function TeamOfficeFloor({
 
   return (
     <svg
-      viewBox={`0 0 ${FLOOR_WIDTH} ${FLOOR_HEIGHT}`}
+      viewBox={`0 0 ${FLOOR_WIDTH} ${height}`}
       className="h-full w-full rounded-xl border border-border bg-muted/30"
       role="img"
       aria-label={translate('team.floor.label', 'Office floor')}
     >
+      <defs>
+        <pattern id={gridId} width={40} height={40} patternUnits="userSpaceOnUse">
+          <path d="M40 0H0V40" fill="none" className="stroke-border" strokeOpacity={0.35} />
+        </pattern>
+      </defs>
+      <rect width={FLOOR_WIDTH} height={height} fill={`url(#${gridId})`} />
       <rect
-        x={720}
-        y={40}
-        width={210}
-        height={170}
+        x={OFFICE_BOUNDS.x}
+        y={OFFICE_BOUNDS.y}
+        width={OFFICE_BOUNDS.width}
+        height={OFFICE_BOUNDS.height}
         rx={8}
-        fill="none"
-        className="stroke-border"
+        className="fill-card stroke-border"
+        fillOpacity={0.4}
         strokeDasharray="6 4"
       />
-      <text x={825} y={32} textAnchor="middle" className="fill-muted-foreground text-[11px]">
+      <text
+        x={OFFICE_BOUNDS.x + OFFICE_BOUNDS.width / 2}
+        y={OFFICE_BOUNDS.y - 10}
+        textAnchor="middle"
+        className="fill-muted-foreground text-[11px]"
+      >
         {translate('team.floor.office', "Manager's office")}
       </text>
-      <Station at={WATER_COOLER} label={translate('team.floor.cooler', 'Water cooler')} />
-      <Station at={COFFEE_STATION} label={translate('team.floor.coffee', 'Coffee')} />
-      {placed.map(({ member, desk }) => (
-        <Desk key={`desk-${member.id}`} at={desk} label={member.display_name} />
-      ))}
+      <WaterCooler at={stations.cooler} />
+      <CoffeeStation at={stations.coffee} />
+      {staffCount === 0 ? (
+        <text
+          x={deskFor(0, false).x + 255}
+          y={deskFor(0, false).y + 100}
+          textAnchor="middle"
+          className="fill-muted-foreground text-[12px]"
+        >
+          {translate('team.floor.emptyHint', 'Add a member to fill a desk.')}
+        </text>
+      ) : null}
       {envelopes.map((message) => {
         const from = deskByHandle.get(message.from_handle) ?? managerDesk
         const to = message.to_handle.startsWith('run:')
@@ -184,7 +310,7 @@ export function TeamOfficeFloor({
               <animateMotion
                 dur="1.6s"
                 repeatCount="3"
-                path={`M${from.x},${from.y - 40} L${to.x},${to.y - 40}`}
+                path={`M${from.x},${from.y - 70} L${to.x},${to.y - 70}`}
               />
             </rect>
           </g>
@@ -210,13 +336,30 @@ export function TeamOfficeFloor({
               variant={spriteVariant(member.slug, SHIRT_FILLS.length)}
               activity={activity}
             />
-            {activity === 'working' && tool ? <Bubble at={{ x: 0, y: 0 }} text={tool} /> : null}
+            {activity === 'working' && tool ? <Bubble at={{ x: 0, y: -8 }} text={tool} /> : null}
             {activity === 'waiting' ? (
-              <Bubble at={{ x: 0, y: 0 }} text={translate('team.floor.needsYou', 'needs you')} />
+              <Bubble at={{ x: 0, y: -8 }} text={translate('team.floor.needsYou', 'needs you')} />
             ) : null}
           </g>
         )
       })}
+      {hasManager ? null : <Desk at={MANAGER_OFFICE} name={null} status="" activity={null} />}
+      {vacantDesks.map((at) => (
+        <Desk key={`vacant-${at.x}-${at.y}`} at={at} name={null} status="" activity={null} />
+      ))}
+      {placed.map(({ member, desk, activity }) => (
+        <Desk
+          key={`desk-${member.id}`}
+          at={desk}
+          name={member.display_name}
+          activity={activity}
+          status={statusLabel(
+            activity,
+            Boolean(member.paused_at),
+            member.pane_key ? (toolByPane[member.pane_key] ?? '') : ''
+          )}
+        />
+      ))}
     </svg>
   )
 }
