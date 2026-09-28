@@ -47,7 +47,14 @@ const VERSIONED_POST_V6_COLUMNS = [
   { version: 42, table: 'runs', column: 'coordinator_orca_session_id' },
   { version: 42, table: 'runs', column: 'coordinator_orca_session_id_generation' },
   { version: 42, table: 'dispatch_contexts', column: 'assignee_orca_session_id' },
-  { version: 42, table: 'dispatch_contexts', column: 'creator_orca_session_id' }
+  { version: 42, table: 'dispatch_contexts', column: 'creator_orca_session_id' },
+  { version: 43, table: 'teams', column: 'run_id' },
+  { version: 43, table: 'team_members', column: 'paused_at' },
+  { version: 43, table: 'team_hire_proposals', column: 'status' },
+  { version: 43, table: 'team_member_sessions', column: 'session_id' },
+  { version: 43, table: 'team_member_queue', column: 'position' },
+  { version: 43, table: 'team_task_refs', column: 'number' },
+  { version: 43, table: 'team_missions', column: 'schedule' }
 ] as const
 
 // Why: v34 shipped without these two, so a v34 stamp proves nothing about them; v35 repairs both

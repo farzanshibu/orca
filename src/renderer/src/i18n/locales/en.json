@@ -18430,5 +18430,200 @@
   },
   "common": {
     "retry": "Retry"
+  },
+  "team": {
+    "sidebar": {
+      "label": "Team"
+    },
+    "activity": {
+      "pausedSpend": "Paused: spend cap reached",
+      "paused": "Paused by you",
+      "stopped": "Not running",
+      "unverifiable": "Terminal not found; it may still be running",
+      "workingOn": "Working on {{ref}}: {{title}}",
+      "working": "Working",
+      "permission": "Waiting for a permission prompt",
+      "idle": "Idle, waiting for work"
+    },
+    "badge": {
+      "manager": "Manager"
+    },
+    "card": {
+      "spend": "Spend",
+      "tokens": "{{tokens}} tokens",
+      "queued": "{{count}} queued",
+      "openRoom": "Open room",
+      "stop": "Stop",
+      "start": "Start",
+      "resume": "Resume",
+      "pause": "Pause"
+    },
+    "room": {
+      "empty": "No team mail to or from this member yet.",
+      "sent": "Sent · {{type}}",
+      "received": "Received · {{type}}",
+      "queue": "Queue · sent in order when the agent is idle",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "removeQueued": "Remove from queue",
+      "queueEmpty": "Nothing queued.",
+      "placeholder": "Tell this agent something…",
+      "sendNow": "Send now",
+      "queueIt": "Queue",
+      "interrupt": "Interrupt and send",
+      "noTerminal": "Start this member to see its live terminal.",
+      "capabilities": "Capabilities"
+    },
+    "inbox": {
+      "answerPlaceholder": "Your answer…",
+      "answer": "Answer",
+      "waiting": "Waiting on you",
+      "gate": "Decision gate",
+      "hire": "Hire proposal",
+      "approveStart": "Approve and start",
+      "reject": "Reject",
+      "nothingWaiting": "Nothing is waiting on you.",
+      "chatter": "Between agents",
+      "external": "From outside",
+      "noExternal": "Nothing from automations, webhooks, or Orca yet."
+    },
+    "orchestrator": {
+      "noCap": "No cap",
+      "setCap": "Set cap",
+      "manager": "manager",
+      "title": "Orchestrator",
+      "spendVsCap": "Spend {{spend}} of cap {{cap}}",
+      "noManager": "This team has no manager yet. Add a member and mark it as manager.",
+      "breaker": "Breaker",
+      "teamSpend": "Team spend {{spend}}",
+      "tripped": "{{name}} stopped at {{spend}} (cap {{cap}})",
+      "notTripped": "No member has hit its cap.",
+      "resumeTeam": "Resume the team",
+      "pauseTeam": "Pause the team",
+      "routingLog": "Routing log",
+      "noRouting": "No routing yet.",
+      "noTokenCap": "No token cap",
+      "cancelClosing": "Call off closing time",
+      "closingTime": "Closing time",
+      "trippedReason": "{{name}} stopped: {{reason}}"
+    },
+    "page": {
+      "title": "Team",
+      "addMember": "Add member",
+      "newTeam": "New team",
+      "noRepo": "Open a repository to see its team.",
+      "empty": "This repository has no team yet.",
+      "createFirst": "Create a team",
+      "noMembers": "Add a manager and a few members to get started.",
+      "importTemplate": "Import template"
+    },
+    "tab": {
+      "agents": "Agents",
+      "orchestrator": "Orchestrator",
+      "tasks": "Tasks",
+      "inboxCount": "Inbox ({{count}})",
+      "inbox": "Inbox",
+      "automations": "Automations",
+      "memory": "Memory",
+      "floor": "Floor"
+    },
+    "create": {
+      "title": "New team",
+      "description": "A standing team of agents for {{repo}}.",
+      "name": "Name",
+      "charter": "Charter",
+      "charterPlaceholder": "What this team is for",
+      "submit": "Create team"
+    },
+    "member": {
+      "title": "Add a member",
+      "description": "Members start in their own worktree with this role brief.",
+      "name": "Name",
+      "role": "Role",
+      "rolePlaceholder": "engineer, reviewer, qa…",
+      "brief": "Role brief",
+      "agent": "Agent",
+      "model": "Model (optional)",
+      "manager": "This member runs the team",
+      "submit": "Add member",
+      "bundle": "Role bundle",
+      "bundlePlaceholder": "Start from a role…"
+    },
+    "tasks": {
+      "todo": "To do",
+      "doing": "Doing",
+      "blocked": "Blocked",
+      "done": "Done",
+      "failed": "failed",
+      "unassigned": "Unassigned",
+      "newPlaceholder": "New task…",
+      "add": "Add task",
+      "enrich": "Ask manager to write it up"
+    },
+    "caps": {
+      "badJson": "MCP servers must be a JSON array.",
+      "skills": "Skills",
+      "connections": "Connections",
+      "mcp": "MCP servers (JSON)",
+      "save": "Save grants (next start)",
+      "copyTemplate": "Copy as template",
+      "connectionsPlaceholder": "github, linear",
+      "mcpPlaceholder": "[{\"name\": \"docs\", \"command\": \"npx\", \"args\": [\"-y\", \"docs-mcp\"]}]"
+    },
+    "import": {
+      "notJson": "That is not valid JSON.",
+      "invalid": "Invalid template.",
+      "title": "Hire from a template",
+      "description": "Paste a member template someone shared with you.",
+      "submit": "Add member",
+      "placeholder": "{\"spec\": \"orca/team-hire@1\", …}"
+    },
+    "auto": {
+      "missions": "Missions",
+      "noMissions": "No missions yet. Start from a template below.",
+      "toggle": "Mission enabled",
+      "remove": "Remove mission",
+      "name": "Mission name",
+      "target": "manager, @all, or a slug",
+      "every": "Every N minutes",
+      "prompt": "What the target should do each time",
+      "add": "Add mission",
+      "triggers": "Outside triggers",
+      "mode": "What outside triggers may do",
+      "webhook": "Webhook",
+      "webhookOff": "Off. The webhook listens on this machine only.",
+      "rotate": "Rotate token",
+      "disableWebhook": "Turn off",
+      "enableWebhook": "Turn on webhook",
+      "compact": "Send /compact after this many tokens (Claude, Codex)",
+      "compactOff": "Off",
+      "save": "Save",
+      "webhookPost": "POST {{url}}",
+      "webhookAuth": "Authorization: Bearer {{token}}"
+    },
+    "memory": {
+      "search": "Search tickets, agents, and notes",
+      "searchButton": "Search",
+      "tickets": "Tickets",
+      "agents": "Agents",
+      "notes": "Notes",
+      "editing": "Editing {{note}}",
+      "save": "Save note"
+    },
+    "floor": {
+      "label": "Office floor",
+      "office": "Manager's office",
+      "cooler": "Water cooler",
+      "coffee": "Coffee",
+      "needsYou": "needs you"
+    },
+    "voice": {
+      "dictate": "Dictate",
+      "title": "Talk to {{name}}",
+      "placeholder": "Speak or type an instruction…",
+      "send": "Send",
+      "readingAloud": "Reading replies aloud",
+      "readAloud": "Read replies aloud"
+    }
   }
 }

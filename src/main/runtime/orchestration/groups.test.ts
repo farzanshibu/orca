@@ -213,3 +213,42 @@ describe('resolveGroupAddress', () => {
     })
   })
 })
+
+describe('resolveGroupAddress team groups', () => {
+  const terminals = [
+    { handle: 'h_mgr', worktreeId: 'wt_1', paneKey: 'tab_1:11111111-1111-4111-8111-111111111111' },
+    { handle: 'h_jim', worktreeId: 'wt_2', paneKey: 'tab_2:22222222-2222-4222-8222-222222222222' },
+    { handle: 'h_pam', worktreeId: 'wt_3', paneKey: 'tab_3:33333333-3333-4333-8333-333333333333' }
+  ]
+  const members = [
+    { slug: 'michael', roleSlug: 'manager', terminalHandle: 'h_mgr', paneKey: null },
+    {
+      slug: 'jim',
+      roleSlug: 'engineer',
+      terminalHandle: 'stale',
+      paneKey: 'tab_9:22222222-2222-4222-8222-222222222222'
+    },
+    { slug: 'pam', roleSlug: 'engineer', terminalHandle: 'h_pam', paneKey: null },
+    { slug: 'kevin', roleSlug: 'engineer', terminalHandle: null, paneKey: null }
+  ]
+
+  it('fans @role out to live members, matching a reminted pane by leaf', () => {
+    expect(resolveGroupAddress('@role:engineer', 'h_mgr', terminals, noStatus, members)).toEqual([
+      'h_jim',
+      'h_pam'
+    ])
+  })
+
+  it('addresses one member by slug and never the sender', () => {
+    expect(resolveGroupAddress('@member:pam', 'h_mgr', terminals, noStatus, members)).toEqual([
+      'h_pam'
+    ])
+    expect(resolveGroupAddress('@member:michael', 'h_mgr', terminals, noStatus, members)).toEqual(
+      []
+    )
+  })
+
+  it('resolves nothing outside a team', () => {
+    expect(resolveGroupAddress('@role:engineer', 'h_mgr', terminals, noStatus)).toEqual([])
+  })
+})

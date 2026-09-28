@@ -20,7 +20,15 @@ export function runResetTransaction(this: OrchestrationDb, statements: string): 
 
 export function resetAll(this: OrchestrationDb): void {
   // Why: retain mutation receipts so a lost reset response cannot replay as a new mutation.
+  // Why teams go too: a team row names the Run this deletes.
   this.runResetTransaction(`
+    DELETE FROM team_hire_proposals;
+    DELETE FROM team_member_sessions;
+    DELETE FROM team_member_queue;
+    DELETE FROM team_task_refs;
+    DELETE FROM team_missions;
+    DELETE FROM team_members;
+    DELETE FROM teams;
     DELETE FROM coordinator_runs;
     DELETE FROM decision_gates;
     DELETE FROM remote_questions;

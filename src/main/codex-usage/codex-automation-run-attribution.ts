@@ -1,5 +1,5 @@
 import type { AutomationRunUsage } from '../../shared/automations-types'
-import type { CodexUsagePersistedState } from './types'
+import type { CodexUsagePersistedState, CodexUsageSession } from './types'
 import { estimateCostUsd } from './codex-usage-cost-estimate'
 import { shouldForceAutomationUsageScan } from '../usage/automation-usage-scan-forcing'
 
@@ -87,9 +87,17 @@ export async function resolveCodexAutomationRunUsage(
     )
   }
 
-  const session = candidates[0]
+  return summarizeProviderSessionUsage(candidates[0], input.worktreeId, collectedAt)
+}
+
+/** Tokens and API-equivalent cost of one session, scoped to `worktreeId` when it ran there. */
+export function summarizeProviderSessionUsage(
+  session: CodexUsageSession,
+  worktreeId: string | null,
+  collectedAt: number
+): AutomationRunUsage {
   const scopedLocations = session.locationBreakdown.filter(
-    (entry) => entry.worktreeId === input.worktreeId
+    (entry) => entry.worktreeId === worktreeId
   )
   const locations = scopedLocations.length > 0 ? scopedLocations : session.locationBreakdown
   const totals = locations.reduce(
@@ -118,7 +126,7 @@ export async function resolveCodexAutomationRunUsage(
     }
   )
   const scopedModelRows = session.locationModelBreakdown.filter(
-    (entry) => entry.worktreeId === input.worktreeId
+    (entry) => entry.worktreeId === worktreeId
   )
   const modelRows = scopedModelRows.length > 0 ? scopedModelRows : session.modelBreakdown
   const modelLabels = [...new Set(modelRows.map((entry) => entry.modelLabel))]

@@ -104,11 +104,14 @@ function fakes() {
     getTerminalPaneKey: vi.fn(() => 'pane_1'),
     retireStructuredAgentSessionTabFromSnapshot
   } as unknown as OrcaRuntimeService
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the failed structured start reads only these db methods; an omitted one throws on call.
   const db = {
     createStartingWorkerDispatch: () => ({
       dispatch: { id: 'd_fail', depth: 0 },
       task: { id: 't1', spec: 'do the thing' }
     }),
+    getTeamByRunId: () => undefined,
+    findTeamMemberByTerminal: () => undefined,
     recordWorkerStage: () => {},
     prepareStartingWorkerAuthority: () => 'capability'
   } as unknown as OrchestrationDb

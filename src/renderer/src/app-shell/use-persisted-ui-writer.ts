@@ -217,6 +217,7 @@ export function usePersistedUIWriter(): void {
     if (!persistedUIReady) {
       return
     }
-    void window.api.ui.set({ activeView })
+    // Why: 'team' is not in the persisted-view wire enum older hosts accept; reopen on the terminal.
+    void window.api.ui.set({ activeView: activeView === 'team' ? 'terminal' : activeView })
   }, [activeView, persistedUIReady])
 }

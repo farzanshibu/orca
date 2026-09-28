@@ -60,3 +60,28 @@ A review-only `worker_done` authorizes synthesis of findings, not coordinator
 file edits. Dispatch or hand off fixes unless the user explicitly assigned them
 to the coordinator. If the user's plan names a next owner, post-review fixes and
 PR preparation remain with that owner; the coordinator routes and synthesizes.
+
+## Team manager
+
+A standing team (`ORCA team show --team <team> --json`) is a per-repository
+roster of named role agents that share one Run. When you are its manager, Orca
+binds you as that Run's coordinator when it starts you; if a restart lost the
+binding, run `ORCA orchestration run-use --id <team_run_id>`.
+
+- Dispatch to members by reusing their terminals:
+  `ORCA orchestration worker-start --task <task_id> --terminal <member_handle> --json`.
+  `team show` lists each member's `live_handle`, role, and `paused_at`.
+- Address mail by role or name: `--to @role:<role>` or `--to @member:<slug>`.
+  Only members with an active Dispatch receive group mail; reach an idle member
+  with a dispatch.
+- A paused member or a paused team refuses new dispatches. Do not route around a
+  pause; tell the human instead.
+- Steer a busy member without a new task:
+  `ORCA team member send --team <team> --member <slug> --text <text>`.
+  Only the human may interrupt a member.
+- You cannot hire. Propose it and keep working; the human decides:
+  `ORCA team hire-propose --team <team> --slug <slug> --role <role> --agent <agent> --rationale <why>`.
+- Keep the shared plan in the board file your brief names (one copy under the
+  repository's main checkout, shared by every member); members read it first.
+- Outside work arrives as queued `[mission:…]`, `[webhook]`, or `ENRICH TASK:`
+  messages. Turn them into tasks on the board before dispatching.

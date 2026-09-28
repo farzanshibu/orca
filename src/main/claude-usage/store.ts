@@ -18,7 +18,10 @@ import { UsageProviderStoreLifecycle } from '../usage/usage-provider-store-lifec
 import { buildBreakdown, buildDaily, buildSummary } from './claude-usage-report-aggregation'
 import { buildRecentSessions } from './claude-usage-session-rows'
 import type { AutomationUsageLookupInput } from './claude-usage-automation-attribution'
-import { resolveAutomationRunUsage } from './claude-usage-automation-attribution'
+import {
+  resolveAutomationRunUsage,
+  summarizeProviderSessionUsage
+} from './claude-usage-automation-attribution'
 
 // Why: v5 widens Claude ownership keys (message-id / uuid fallbacks). Older
 // caches either lack ownership or used narrower keys and can under/over-count
@@ -134,6 +137,22 @@ export class ClaudeUsageStore extends UsageProviderStoreLifecycle<
   ): Promise<ClaudeUsageSessionRow[]> {
     await this.refresh(false)
     return buildRecentSessions(this.state, scope, range, limit)
+  }
+
+  /** Usage of exactly these provider sessions; missing ids are simply absent from the result. */
+  async getProviderSessionUsage(
+    sessions: readonly { sessionId: string; worktreeId: string | null }[]
+  ): Promise<AutomationRunUsage[]> {
+    if (!this.state.scanState.enabled || sessions.length === 0) {
+      return []
+    }
+    await this.refresh(false)
+    const collectedAt = Date.now()
+    const byId = new Map(this.state.sessions.map((session) => [session.sessionId, session]))
+    return sessions.flatMap(({ sessionId, worktreeId }) => {
+      const session = byId.get(sessionId)
+      return session ? [summarizeProviderSessionUsage(session, worktreeId, collectedAt)] : []
+    })
   }
 
   async getAutomationRunUsage(input: AutomationUsageLookupInput): Promise<AutomationRunUsage> {

@@ -113,6 +113,8 @@ export const TopLevelViewSchema = z.enum([
   'tasks',
   'activity',
   'automations',
+  // Accepted, never sent: clients persist 'terminal' in its place so older hosts stay compatible.
+  'team',
   'space',
   'skills',
   'artifacts',
