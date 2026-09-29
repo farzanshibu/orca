@@ -1,26 +1,10 @@
 import type { FloorActivity } from './office-floor-state'
 
-/** Named places a character can stand; the plan marks each with `data-floor-anchor`. */
-export const IDLE_SPOTS = [
-  'couch-0',
-  'couch-1',
-  'couch-2',
-  'couch-3',
-  'table',
-  'kitchen',
-  'fridge',
-  'board',
-  'stool-0',
-  'stool-1',
-  'stool-2',
-  'door'
-] as const
-
-export const BEDROOM_COUNT = 2
 /** How long an idle character lingers before wandering to the next spot. */
 export const ROAM_INTERVAL_MS = 9_000
 
-export type RoamTarget = { anchor: string; slot: number }
+/** At their own desk, at one of the layout's idle spots, or out of the office entirely. */
+export type RoamTarget = { kind: 'desk' } | { kind: 'spot'; index: number } | { kind: 'away' }
 
 export function stableHash(seed: string): number {
   let hash = 0
@@ -31,41 +15,37 @@ export function stableHash(seed: string): number {
 }
 
 /**
- * Where each member stands this tick. Desk-bound members sit in their desk chair; offline ones rest
- * in a bedroom; idle ones wander between free spots, never two on one spot.
+ * Where each member is this tick. Desk-bound members sit at their desk; offline ones are out of the
+ * office; idle ones wander between free spots, never two on one spot, and fall back to their desk
+ * when every spot is taken.
  */
 export function roamTargets(
   members: readonly { id: string; slug: string; activity: FloorActivity }[],
+  spotCount: number,
   tick: number
 ): Map<string, RoamTarget> {
   const targets = new Map<string, RoamTarget>()
-  const taken = new Set<string>()
-  let resting = 0
+  const taken = new Set<number>()
   for (const member of members) {
-    if (member.activity === 'working' || member.activity === 'waiting') {
-      targets.set(member.id, { anchor: `desk-${member.id}`, slot: 0 })
-    } else if (member.activity === 'off') {
-      targets.set(member.id, {
-        anchor: `bedroom-${resting % BEDROOM_COUNT}`,
-        slot: Math.floor(resting / BEDROOM_COUNT)
-      })
-      resting += 1
-    }
-  }
-  for (const member of members) {
-    if (member.activity !== 'idle') {
+    if (member.activity === 'off') {
+      targets.set(member.id, { kind: 'away' })
       continue
     }
-    const start =
-      (stableHash(member.slug) + tick * (1 + (stableHash(member.id) % 3))) % IDLE_SPOTS.length
-    for (let step = 0; step < IDLE_SPOTS.length; step += 1) {
-      const spot = IDLE_SPOTS[(start + step) % IDLE_SPOTS.length]
-      if (!taken.has(spot)) {
-        taken.add(spot)
-        targets.set(member.id, { anchor: spot, slot: 0 })
+    if (member.activity !== 'idle' || spotCount === 0) {
+      targets.set(member.id, { kind: 'desk' })
+      continue
+    }
+    const start = (stableHash(member.slug) + tick * (1 + (stableHash(member.id) % 3))) % spotCount
+    let target: RoamTarget = { kind: 'desk' }
+    for (let step = 0; step < spotCount; step += 1) {
+      const index = (start + step) % spotCount
+      if (!taken.has(index)) {
+        taken.add(index)
+        target = { kind: 'spot', index }
         break
       }
     }
+    targets.set(member.id, target)
   }
   return targets
 }

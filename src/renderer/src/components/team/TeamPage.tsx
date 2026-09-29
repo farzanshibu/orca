@@ -44,9 +44,9 @@ export default function TeamPage(): React.JSX.Element {
     : 0
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-background">
+    <div className="flex h-full min-h-0 w-full flex-col bg-background pt-5 md:pt-6">
       <header
-        className="flex shrink-0 items-center gap-2 px-3 pb-3 md:px-5"
+        className="flex shrink-0 flex-wrap items-center gap-2 px-3 pb-3 md:px-5"
         style={{ paddingRight: 'max(0.75rem, var(--window-controls-width, 0px))' }}
       >
         <h1 className="truncate text-base font-semibold leading-8">
@@ -107,7 +107,7 @@ export default function TeamPage(): React.JSX.Element {
           </Button>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col px-5 pb-4">
+        <div className="flex min-h-0 flex-1 flex-col px-3 pb-4 md:px-5">
           <Tabs defaultValue="floor" className="min-h-0 flex-1">
             <TabsList>
               <TabsTrigger value="floor">{translate('team.tab.floor', 'Floor')}</TabsTrigger>

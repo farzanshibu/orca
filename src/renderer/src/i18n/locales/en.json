@@ -18611,28 +18611,18 @@
       "save": "Save note"
     },
     "floor": {
-      "apartment": "Apartment",
-      "desks": "Desks by the window",
-      "board": "Whiteboard wall",
-      "living": "Living room",
-      "kitchen": "Kitchen",
-      "entry": "Entry",
-      "bedrooms": "Bedrooms",
-      "bedroomEmpty": "Nobody is resting.",
-      "sleeping": "z z",
-      "invite": "Invite a member in",
-      "elevator": "Elevator · out of order",
-      "noManager": "No manager yet",
-      "firstDesk": "Add your first member",
+      "office": "Office",
       "openDesk": "Open desk",
-      "mail": "New message",
-      "screen": {
-        "working": "▸ working",
-        "noTask": "no ticket assigned",
-        "waiting": "Needs your answer",
-        "away": "Away from desk",
+      "manager": "Lead",
+      "hire": "Add member",
+      "noTask": "No ticket assigned",
+      "noActivity": "Nothing in flight",
+      "status": {
+        "working": "Working",
+        "waiting": "Needs you",
+        "idle": "On a break",
         "paused": "Paused",
-        "off": "Screen off"
+        "off": "Out of office"
       },
       "summary": {
         "working": "{{count}} working",
