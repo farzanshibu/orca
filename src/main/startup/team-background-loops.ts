@@ -22,7 +22,7 @@ export function startTeamBackgroundLoops(runtime: OrcaRuntimeService): void {
     interruptMember: async (member) => {
       const handle = resolveLiveTeamMemberHandle(runtime, member)
       if (handle) {
-        await runtime.sendTerminal(handle, { interrupt: true })
+        await runtime.sendTerminal(handle, { interrupt: true }, { inputKind: 'driving' })
       }
     },
     notifyMailbox: (mailbox) => runtime.notifyMessageArrived(mailbox, 'escalation')
@@ -33,7 +33,7 @@ export function startTeamBackgroundLoops(runtime: OrcaRuntimeService): void {
     resolveLiveHandle: (member) => resolveLiveTeamMemberHandle(runtime, member),
     getAgentStatus: (handle) => runtime.getAgentStatusForHandle(handle),
     sendPrompt: async (handle, text) => {
-      await runtime.sendTerminalAgentPrompt(handle, text)
+      await runtime.sendTerminalAgentPrompt(handle, text, { inputKind: 'driving' })
     }
   }).start()
   new TeamMissionScheduler(() => runtime.getOrchestrationDb()).start()
@@ -42,14 +42,14 @@ export function startTeamBackgroundLoops(runtime: OrcaRuntimeService): void {
     interruptMember: async (member) => {
       const handle = resolveLiveTeamMemberHandle(runtime, member)
       if (handle) {
-        await runtime.sendTerminal(handle, { interrupt: true })
+        await runtime.sendTerminal(handle, { interrupt: true }, { inputKind: 'driving' })
       }
     },
     notifyMailbox: (mailbox) => runtime.notifyMessageArrived(mailbox, 'escalation'),
     steerMember: async (member, text) => {
       const handle = resolveLiveTeamMemberHandle(runtime, member)
       if (handle) {
-        await runtime.sendTerminalAgentPrompt(handle, text)
+        await runtime.sendTerminalAgentPrompt(handle, text, { inputKind: 'driving' })
       }
     }
   })

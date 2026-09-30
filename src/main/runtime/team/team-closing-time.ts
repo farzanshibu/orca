@@ -10,7 +10,7 @@ const IDLE_TICKS_TO_STOP = 3
 export type TeamClosingTimeDeps = {
   getDb: () => OrchestrationDb
   resolveLiveHandle: (member: TeamMemberRow) => string | null
-  getAgentStatus: (handle: string) => string | null
+  getAgentStatus: (handle: string) => Promise<string | null>
   stopMember: (member: TeamMemberRow) => Promise<void>
 }
 
@@ -62,7 +62,7 @@ export class TeamClosingTime {
         running += 1
         const quiet =
           db.listPendingTeamQueue(member.id).length === 0 &&
-          this.deps.getAgentStatus(handle) === 'idle'
+          (await this.deps.getAgentStatus(handle)) === 'idle'
         const ticks = quiet ? (this.idleTicks.get(member.id) ?? 0) + 1 : 0
         this.idleTicks.set(member.id, ticks)
         if (ticks >= IDLE_TICKS_TO_STOP) {

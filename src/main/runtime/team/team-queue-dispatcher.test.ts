@@ -43,7 +43,7 @@ describe('TeamQueueDispatcher', () => {
     return new TeamQueueDispatcher({
       getDb: () => db,
       resolveLiveHandle: (member) => member.terminal_handle,
-      getAgentStatus: () => status,
+      getAgentStatus: async () => status,
       sendPrompt
     })
   }

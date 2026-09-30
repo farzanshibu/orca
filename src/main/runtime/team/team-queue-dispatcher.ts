@@ -4,7 +4,7 @@ import type { TeamMemberRow } from '../orchestration/team-types'
 export type TeamQueueDispatcherDeps = {
   getDb: () => OrchestrationDb
   resolveLiveHandle: (member: TeamMemberRow) => string | null
-  getAgentStatus: (handle: string) => string | null
+  getAgentStatus: (handle: string) => Promise<string | null>
   sendPrompt: (handle: string, text: string) => Promise<void>
 }
 
@@ -61,7 +61,7 @@ export class TeamQueueDispatcher {
     if (!handle || member.paused_at) {
       return
     }
-    const status = this.deps.getAgentStatus(handle)
+    const status = await this.deps.getAgentStatus(handle)
     if (status !== 'idle') {
       if (status !== null) {
         this.awaitingTurn.delete(member.id)

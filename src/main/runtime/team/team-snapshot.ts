@@ -21,28 +21,30 @@ export function publicTeam(team: TeamRow) {
   return { ...rest, webhook_enabled: token !== null }
 }
 
-export function projectTeamMember(
+export async function projectTeamMember(
   runtime: RpcContext['runtime'],
   member: TeamMemberRow
-): TeamMemberView {
+): Promise<TeamMemberView> {
   const handle = resolveLiveTeamMemberHandle(runtime, member)
   return {
     ...member,
     live_handle: handle,
     liveness: handle ? 'live' : member.desired_state === 'running' ? 'unverifiable' : 'stopped',
-    agent_status: handle ? runtime.getAgentStatusForHandle(handle) : null
+    agent_status: handle ? await runtime.getAgentStatusForHandle(handle) : null
   }
 }
 
-export function buildTeamSnapshot(
+export async function buildTeamSnapshot(
   runtime: RpcContext['runtime'],
   db: OrchestrationDb,
   team: TeamRow
 ) {
-  const members = db.listTeamMembers(team.id).map((member) => ({
-    ...projectTeamMember(runtime, member),
-    queue: db.listPendingTeamQueue(member.id)
-  }))
+  const members = await Promise.all(
+    db.listTeamMembers(team.id).map(async (member) => ({
+      ...(await projectTeamMember(runtime, member)),
+      queue: db.listPendingTeamQueue(member.id)
+    }))
+  )
   const refs = db.assignTeamTaskRefs(team.id)
   return {
     team: publicTeam(team),

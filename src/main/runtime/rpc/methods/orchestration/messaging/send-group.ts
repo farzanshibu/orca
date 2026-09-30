@@ -152,7 +152,7 @@ export async function sendGroupMessage(args: {
     const { terminals } = await runtime.listTerminals(undefined, undefined, {
       includeVisualLayouts: false
     })
-    agents = [...terminals, ...listAddressableStructuredWorkers()]
+    agents = [...terminals, ...listAddressableStructuredWorkers(db)]
   }
   // Revalidate after discovery before selecting recipients or writing mail.
   revalidateLegacyCoordinator?.()
@@ -182,11 +182,23 @@ export async function sendGroupMessage(args: {
         paneKey: member.pane_key
       }))
     : []
+  // Read up front: a structured worker's status comes from its journal, which may need opening.
+  const statuses =
+    groupAddress.toLowerCase() === '@idle'
+      ? new Map(
+          await Promise.all(
+            candidates.map(
+              async (candidate) =>
+                [candidate.handle, await runtime.getAgentStatusForHandle(candidate.handle)] as const
+            )
+          )
+        )
+      : new Map<string, string | null>()
   const handles = resolveGroupAddress(
     groupAddress,
     from,
     candidates,
-    (handle: string) => runtime.getAgentStatusForHandle(handle),
+    (handle: string) => statuses.get(handle) ?? null,
     teamMembers
   )
   if (handles.length === 0) {

@@ -165,8 +165,8 @@ export async function sendToTeamMember(args: {
     )
   }
   if (args.interrupt) {
-    await context.runtime.sendTerminal(handle, { interrupt: true })
+    await context.runtime.sendTerminal(handle, { interrupt: true }, { inputKind: 'driving' })
   }
-  await context.runtime.sendTerminalAgentPrompt(handle, args.text)
+  await context.runtime.sendTerminalAgentPrompt(handle, args.text, { inputKind: 'driving' })
   return { handle }
 }

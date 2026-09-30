@@ -76,7 +76,7 @@ export const TEAM_HIRE_METHODS = [
           : decided.member
       return {
         proposal: decided.proposal,
-        member: member ? projectTeamMember(context.runtime, member) : null
+        member: member ? await projectTeamMember(context.runtime, member) : null
       }
     }
   })

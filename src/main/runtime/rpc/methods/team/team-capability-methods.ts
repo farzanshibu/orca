@@ -27,7 +27,7 @@ export const TEAM_CAPABILITY_METHODS = [
       const member = db.resolveTeamMemberSelector(team.id, params.member)
       db.setTeamMemberCapabilities(member.id, params.capabilities)
       // Grants reach the agent's files and brief on its next start.
-      return { member: projectTeamMember(context.runtime, db.requireTeamMember(member.id)) }
+      return { member: await projectTeamMember(context.runtime, db.requireTeamMember(member.id)) }
     }
   }),
 
@@ -79,7 +79,7 @@ export const TEAM_CAPABILITY_METHODS = [
         effort: template.effort ?? null,
         capabilities: template.capabilities
       })
-      return { member: projectTeamMember(context.runtime, member) }
+      return { member: await projectTeamMember(context.runtime, member) }
     }
   })
 ]

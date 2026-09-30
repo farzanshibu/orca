@@ -85,7 +85,7 @@ describe('orchestration team methods', () => {
       (handle) => livePanes.get(handle) ?? null
     )
     vi.spyOn(runtime, 'getTerminalHandleForPaneKey').mockReturnValue(null)
-    vi.spyOn(runtime, 'getAgentStatusForHandle').mockReturnValue('idle')
+    vi.spyOn(runtime, 'getAgentStatusForHandle').mockResolvedValue('idle')
     vi.spyOn(runtime, 'verifyOrchestrationCompatibilityCaller').mockImplementation(() =>
       attestedHandle
         ? {

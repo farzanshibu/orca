@@ -41,7 +41,7 @@ export const TEAM_MEMBER_METHODS = [
         isManager: params.manager,
         capabilities: params.capabilities
       })
-      return { member: projectTeamMember(context.runtime, member) }
+      return { member: await projectTeamMember(context.runtime, member) }
     }
   }),
 
@@ -66,7 +66,7 @@ export const TEAM_MEMBER_METHODS = [
         model: params.model,
         effort: params.effort
       })
-      return { member: projectTeamMember(context.runtime, member) }
+      return { member: await projectTeamMember(context.runtime, member) }
     }
   }),
 
@@ -95,7 +95,7 @@ export const TEAM_MEMBER_METHODS = [
       }
       const member = db.resolveTeamMemberSelector(team.id, params.member)
       const started = await startTeamMember({ context, db, team, member })
-      return { member: projectTeamMember(context.runtime, started) }
+      return { member: await projectTeamMember(context.runtime, started) }
     }
   }),
 
@@ -108,7 +108,7 @@ export const TEAM_MEMBER_METHODS = [
       requireTeamOperator(resolveTeamCaller(context, db, team), 'stop members')
       const member = db.resolveTeamMemberSelector(team.id, params.member)
       const stopped = await stopTeamMember({ runtime: context.runtime, db, member })
-      return { member: projectTeamMember(context.runtime, stopped) }
+      return { member: await projectTeamMember(context.runtime, stopped) }
     }
   }),
 
@@ -123,7 +123,7 @@ export const TEAM_MEMBER_METHODS = [
         db.resolveTeamMemberSelector(team.id, params.member).id,
         true
       )
-      return { member: projectTeamMember(context.runtime, member) }
+      return { member: await projectTeamMember(context.runtime, member) }
     }
   }),
 
@@ -138,7 +138,7 @@ export const TEAM_MEMBER_METHODS = [
         db.resolveTeamMemberSelector(team.id, params.member).id,
         false
       )
-      return { member: projectTeamMember(context.runtime, member) }
+      return { member: await projectTeamMember(context.runtime, member) }
     }
   }),
 
@@ -151,7 +151,7 @@ export const TEAM_MEMBER_METHODS = [
       requireTeamOperator(resolveTeamCaller(context, db, team), 'change spend caps')
       const member = db.resolveTeamMemberSelector(team.id, params.member)
       db.setTeamMemberSpendCap(member.id, params.capUsd, params.tokenCap)
-      return { member: projectTeamMember(context.runtime, db.requireTeamMember(member.id)) }
+      return { member: await projectTeamMember(context.runtime, db.requireTeamMember(member.id)) }
     }
   }),
 

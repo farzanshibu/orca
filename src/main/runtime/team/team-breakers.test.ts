@@ -84,7 +84,7 @@ describe('team breakers', () => {
       getDb: () => db,
       resolveLiveHandle: (member) =>
         live.has(member.terminal_handle ?? '') ? member.terminal_handle : null,
-      getAgentStatus: () => status,
+      getAgentStatus: async () => status,
       stopMember
     })
     await closing.tick()
