@@ -53,3 +53,54 @@ describe('assertTeamAcceptsWorkerStart', () => {
     ).not.toThrow()
   })
 })
+
+describe('one active dispatch per team member', () => {
+  let db: OrchestrationDb
+
+  beforeEach(() => {
+    db = new OrchestrationDb(':memory:')
+  })
+
+  afterEach(() => {
+    db.close()
+  })
+
+  function attach(taskId: string, handle: string, leaf: string): string {
+    const { dispatch } = db.createStartingWorkerDispatch({
+      taskId,
+      startOptions: {},
+      creator: { kind: 'system' },
+      maxDepth: Number.MAX_SAFE_INTEGER
+    })
+    db.prepareStartingWorkerAuthority({
+      dispatchId: dispatch.id,
+      handle,
+      paneKey: `tab_${handle}:${leaf}`,
+      processIncarnation: `proc_${handle}`,
+      worktreeId: 'wt',
+      setupState: 'not_applicable',
+      effects: []
+    })
+    return dispatch.id
+  }
+
+  it('refuses a second task of a member whose first still runs on a terminal it replaced', () => {
+    const team = db.createTeam({ repoId: 'repo_1', name: 'Platform' })
+    const jim = db.addTeamMember(team.id, { slug: 'jim', roleSlug: 'engineer', agent: 'codex' })
+    const pam = db.addTeamMember(team.id, { slug: 'pam', roleSlug: 'designer', agent: 'claude' })
+    const [first, second, third] = ['First', 'Second', 'Third'].map((spec) =>
+      db.createTask({ runId: team.run_id, spec })
+    )
+    db.assignTeamTask(team.id, first.id, jim.id)
+    db.assignTeamTask(team.id, second.id, jim.id)
+    db.assignTeamTask(team.id, third.id, pam.id)
+    const running = attach(first.id, 'term_old', '11111111-1111-4111-8111-111111111111')
+
+    // A restarted member has a new handle and pane, which the terminal check cannot tie to the old.
+    expect(() => attach(second.id, 'term_new', '22222222-2222-4222-8222-222222222222')).toThrow(
+      new RegExp(`Team member jim already has an active dispatch \\(${running}`)
+    )
+    expect(db.listTeamMemberIdsWithActiveDispatch(team.run_id)).toEqual([jim.id])
+    expect(() => attach(third.id, 'term_pam', '33333333-3333-4333-8333-333333333333')).not.toThrow()
+  })
+})

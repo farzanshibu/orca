@@ -49,6 +49,15 @@ export function prepareStartingWorkerAuthority(
         `Terminal ${params.handle} already has an active dispatch (${existing.id} for task ${existing.task_id})`
       )
     }
+    // The terminal check above misses a member's Dispatch left on a terminal it has since replaced.
+    const memberConflict = this.findTeamMemberDispatchConflict(dispatch.task_id, params.dispatchId)
+    if (memberConflict) {
+      throw new OrchestrationError(
+        'team_conflict',
+        `Team member ${this.getTeamMember(memberConflict.member_id)?.slug ?? memberConflict.member_id} already has an active dispatch (${memberConflict.dispatch_id} for task ${memberConflict.task_id}).`,
+        { memberId: memberConflict.member_id, dispatchId: memberConflict.dispatch_id }
+      )
+    }
     const capability = `dcap_${randomBytes(32).toString('base64url')}`
     const endpointId = this.getWorkerDispatch(params.dispatchId)?.runtime_epoch ?? null
     const contextUpdate = this.db

@@ -54,8 +54,10 @@ import { attachSchemaColumnProbes } from './schema/schema-column-probes'
 import { attachTaskStore } from './tasks/task-store'
 import { attachTeamMemberSpendStore } from './teams/team-member-spend-store'
 import { attachTeamActivityStore } from './teams/team-activity-store'
+import { attachTeamAssignedWorkStore } from './teams/team-assigned-work-store'
 import { attachTeamAutomationStore } from './teams/team-automation-store'
 import { attachTeamBoardStore } from './teams/team-board-store'
+import { attachTeamGoalStore } from './teams/team-goal-store'
 import { attachTeamInboxStore } from './teams/team-inbox-store'
 import { attachTeamHireProposalStore } from './teams/team-hire-proposal-store'
 import { attachTeamMemberStore } from './teams/team-member-store'
@@ -154,4 +156,6 @@ export function attachOrchestrationDbMethods(ctor: { prototype: object }): void 
   attachTeamMemberSpendStore(ctor)
   attachTeamTaskMetaStore(ctor)
   attachTeamActivityStore(ctor)
+  attachTeamAssignedWorkStore(ctor)
+  attachTeamGoalStore(ctor)
 }

@@ -21,4 +21,5 @@ export const CURRENT_CONTRACT_VERSION = ORCHESTRATION_CONTRACT_VERSION
 // v42: structured-session Orca session id columns.
 // v43: standing teams, members, and hire proposals.
 // v44: team task assignment and goals, queue sources, and the team activity feed.
-export const SCHEMA_VERSION = 44
+// v45: team scheduler retry bookkeeping and the goal index.
+export const SCHEMA_VERSION = 45

@@ -44,7 +44,9 @@ export const TeamActivityParams = z.object({
 export const TeamUpdateParams = z.object({
   ...TeamSelector,
   charter: OptionalString,
-  status: OptionalString
+  status: OptionalString,
+  /** Most members Orca starts tasks on at once; null removes the limit. Omitted keeps it. */
+  maxParallel: z.number().int().positive().nullable().optional()
 })
 
 const MemberFields = {
@@ -203,7 +205,28 @@ export const TeamTaskCreateParams = z.object({
   title: requiredString('Missing --title'),
   spec: OptionalString,
   /** Hand the rough request to the manager to rewrite into a full task instead of filing it as is. */
-  enrich: OptionalBoolean
+  enrich: OptionalBoolean,
+  /** The goal this task belongs to: a ref like `bmt-12` or a task id. */
+  goal: OptionalString,
+  /** The member who works it, by slug or id; Orca starts it once it is ready and they are free. */
+  assignee: OptionalString,
+  /** Refs or ids of the tasks that must finish first. */
+  deps: z.array(z.string().min(1)).max(100).optional()
+})
+
+export const TeamGoalCreateParams = z.object({
+  ...TeamSelector,
+  title: requiredString('Missing --title'),
+  spec: OptionalString
+})
+
+export const TeamGoalCloseParams = z.object({
+  ...TeamSelector,
+  /** A ref like `bmt-12` or a task id. */
+  goal: requiredString('Missing --goal'),
+  summary: OptionalString,
+  /** Stop the goal instead of completing it: its tasks that have not started are cancelled too. */
+  cancel: OptionalBoolean
 })
 
 export const TeamTaskAssignParams = z

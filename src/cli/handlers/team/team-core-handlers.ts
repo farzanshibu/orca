@@ -46,10 +46,16 @@ export const TEAM_CORE_HANDLERS: Record<string, CommandHandler> = {
   },
 
   'team update': async ({ flags, client, json }) => {
+    const limit = getOptionalStringFlag(flags, 'max-parallel')
+    const maxParallel = limit === undefined || limit === 'none' ? null : Number(limit)
+    if (maxParallel !== null && (!Number.isInteger(maxParallel) || maxParallel <= 0)) {
+      throw new Error('--max-parallel must be a positive whole number or "none".')
+    }
     const result = await client.call<{ team: TeamSummary }>('orchestration.teamUpdate', {
       ...teamParams(flags),
       charter: getOptionalStringFlag(flags, 'charter'),
-      status: getOptionalStringFlag(flags, 'status')
+      status: getOptionalStringFlag(flags, 'status'),
+      ...(limit === undefined ? {} : { maxParallel })
     })
     printResult(result, json, (value) => `Team ${value.team.name} [${value.team.status}]`)
   },

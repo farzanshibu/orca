@@ -1,0 +1,45 @@
+import type { HandlerGroup } from './handler-group-manifest'
+
+// Why split out: the team surface is the CLI's largest group and grows as a unit.
+export const TEAM_HANDLER_GROUP: HandlerGroup = {
+  name: 'team',
+  keys: [
+    'team create',
+    'team list',
+    'team show',
+    'team update',
+    'team log',
+    'team activity',
+    'team member add',
+    'team member update',
+    'team member rm',
+    'team member start',
+    'team member stop',
+    'team member pause',
+    'team member resume',
+    'team member grant',
+    'team member export',
+    'team member import',
+    'team member cap',
+    'team member send',
+    'team answer',
+    'team gate-resolve',
+    'team hire-propose',
+    'team hire-decide',
+    'team mission add',
+    'team mission list',
+    'team mission enable',
+    'team mission disable',
+    'team mission rm',
+    'team triggers',
+    'team memory',
+    'team note read',
+    'team note write',
+    'team task add',
+    'team task assign',
+    'team goal create',
+    'team goal close',
+    'team closing-time'
+  ],
+  load: async () => (await import('./handlers/team.js')).TEAM_HANDLERS
+}

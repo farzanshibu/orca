@@ -13,9 +13,13 @@ const TeamTaskMetaSchema = z.object({
   kind: z.enum(TEAM_TASK_KINDS),
   assignee_member_id: z.string().nullable(),
   assigned_at: z.string().nullable(),
-  review_requested_at: z.string().nullable()
+  review_requested_at: z.string().nullable(),
+  start_failures: z.number(),
+  retry_at: z.string().nullable(),
+  escalated_at: z.string().nullable(),
+  counted_dispatch_id: z.string().nullable()
 })
-/** What the team adds to an orchestration task: its ref number, kind, and assignee. */
+/** What the team adds to an orchestration task: its ref number, kind, assignee, and start retries. */
 export type TeamTaskMeta = z.infer<typeof TeamTaskMetaSchema>
 
 export function getTeamTaskMeta(this: OrchestrationDb, taskId: string): TeamTaskMeta | undefined {
@@ -55,7 +59,11 @@ export function requireTeamTaskMeta(
   return meta
 }
 
-/** Sets or clears who works the task. Clearing keeps any dispatch already running. */
+/**
+ * Sets or clears who works the task. Clearing keeps any dispatch already running. Either way the
+ * start retries begin again, and the task's history so far is counted as already seen: assigning
+ * is how a manager says "try this now".
+ */
 export function assignTeamTask(
   this: OrchestrationDb,
   teamId: string,
@@ -78,10 +86,14 @@ export function assignTeamTask(
   this.db
     .prepare(
       `UPDATE team_task_refs
-       SET assignee_member_id = ?, assigned_at = CASE WHEN ? IS NULL THEN NULL ELSE datetime('now') END
+       SET assignee_member_id = ?,
+           assigned_at = CASE WHEN ? IS NULL THEN NULL ELSE datetime('now') END,
+           start_failures = 0, retry_at = NULL, escalated_at = NULL,
+           counted_dispatch_id = (
+             SELECT id FROM dispatch_contexts WHERE task_id = ? ORDER BY rowid DESC LIMIT 1)
        WHERE task_id = ?`
     )
-    .run(memberId, memberId, taskId)
+    .run(memberId, memberId, taskId, taskId)
   return this.requireTeamTaskMeta(teamId, taskId)
 }
 
@@ -111,6 +123,26 @@ export function setTeamGoalReviewRequested(
     .run(requested ? 1 : 0, taskId)
 }
 
+/**
+ * Counts one failed start. `retryAt` null with `escalated` means Orca stops trying; `dispatchId`
+ * is the failed Dispatch, left as it was when the start failed before one existed.
+ */
+export function recordTeamTaskStartFailure(
+  this: OrchestrationDb,
+  taskId: string,
+  failure: { retryAt: string | null; escalated: boolean; dispatchId: string | null }
+): void {
+  this.db
+    .prepare(
+      `UPDATE team_task_refs
+       SET start_failures = start_failures + 1, retry_at = ?,
+           escalated_at = CASE WHEN ? THEN datetime('now') ELSE escalated_at END,
+           counted_dispatch_id = COALESCE(?, counted_dispatch_id)
+       WHERE task_id = ?`
+    )
+    .run(failure.retryAt, failure.escalated ? 1 : 0, failure.dispatchId, taskId)
+}
+
 export type TeamTaskMetaStoreMethods = {
   getTeamTaskMeta: typeof getTeamTaskMeta
   listTeamTaskMeta: typeof listTeamTaskMeta
@@ -118,6 +150,7 @@ export type TeamTaskMetaStoreMethods = {
   assignTeamTask: typeof assignTeamTask
   markTeamTaskKind: typeof markTeamTaskKind
   setTeamGoalReviewRequested: typeof setTeamGoalReviewRequested
+  recordTeamTaskStartFailure: typeof recordTeamTaskStartFailure
 }
 
 export function attachTeamTaskMetaStore(ctor: { prototype: object }): void {
@@ -127,6 +160,7 @@ export function attachTeamTaskMetaStore(ctor: { prototype: object }): void {
     requireTeamTaskMeta,
     assignTeamTask,
     markTeamTaskKind,
-    setTeamGoalReviewRequested
+    setTeamGoalReviewRequested,
+    recordTeamTaskStartFailure
   })
 }

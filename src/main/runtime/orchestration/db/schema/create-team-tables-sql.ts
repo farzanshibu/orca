@@ -92,6 +92,14 @@ CREATE TABLE IF NOT EXISTS team_task_refs (
   assigned_at         TEXT,
   -- Set once the manager was asked to review a goal whose tasks all finished.
   review_requested_at TEXT,
+  -- Starts that failed since the task was assigned, and when Orca may try again.
+  start_failures      INTEGER NOT NULL DEFAULT 0,
+  retry_at            TEXT,
+  -- Set once Orca stopped retrying and told the manager; assigning the task again clears it.
+  escalated_at        TEXT,
+  -- The task's latest Dispatch already accounted for: a newer failed one is a new failure, and a
+  -- failed task restarts only while this is still its latest.
+  counted_dispatch_id TEXT,
   UNIQUE (team_id, number)
 );
 

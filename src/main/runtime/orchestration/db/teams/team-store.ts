@@ -101,15 +101,23 @@ export function listTeams(
 export function updateTeam(
   this: OrchestrationDb,
   id: string,
-  patch: { charter?: string; status?: TeamStatus }
+  patch: { charter?: string; status?: TeamStatus; maxParallel?: number | null }
 ): TeamRow {
   const team = this.requireTeam(id)
   if (team.status === 'archived' && patch.status !== undefined && patch.status !== 'archived') {
     throw new OrchestrationError('team_conflict', `Team ${id} is archived.`, { teamId: id })
   }
   this.db
-    .prepare(`UPDATE teams SET charter = ?, status = ?, updated_at = datetime('now') WHERE id = ?`)
-    .run(patch.charter?.trim() ?? team.charter, patch.status ?? team.status, id)
+    .prepare(
+      `UPDATE teams SET charter = ?, status = ?, max_parallel = ?, updated_at = datetime('now')
+       WHERE id = ?`
+    )
+    .run(
+      patch.charter?.trim() ?? team.charter,
+      patch.status ?? team.status,
+      patch.maxParallel === undefined ? team.max_parallel : patch.maxParallel,
+      id
+    )
   return this.requireTeam(id)
 }
 

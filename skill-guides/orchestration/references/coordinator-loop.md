@@ -68,17 +68,40 @@ roster of named role agents that share one Run. When you are its manager, Orca
 binds you as that Run's coordinator when it starts you; if a restart lost the
 binding, run `ORCA orchestration run-use --id <team_run_id>`.
 
-- Assign work to members; Orca starts each task in that member's own terminal
-  and worktree once the task is ready and the member is free:
+- A goal arrives as a queued `GOAL <ref>:` message. Plan it into tasks with one
+  owner each, and let Orca dispatch them:
+  `ORCA team task add --team <team> --goal <goal_ref> --title <title> --spec <spec> --assignee <slug> [--deps <ref,ref>] --json`.
+  Orca starts each task in its owner's own terminal once its `--deps` are done
+  and the owner is free, one task per member at a time; tasks with no
+  dependency between them run in parallel. Do not `worker-start` them.
+- Give an existing task an owner, or a failed one another try:
   `ORCA team task assign --team <team> --task <ref> --member <slug> --json`.
-  Raw `worker-start` also works, but a member's terminal lives in its own
-  worktree, so pass both: `ORCA orchestration worker-start --task <task_id>
-  --terminal <member_handle> --worktree id:<member_worktree_id> --json`.
-  `team show` lists each member's `live_handle`, `worktree_id`, role, and
-  `paused_at`.
-- Address mail by role or name: `--to @role:<role>` or `--to @member:<slug>`.
-  Only members with an active Dispatch receive group mail; reach an idle member
-  with a dispatch.
+  The result's `waiting` says why a task has not started; Orca starts it when
+  that clears. A start that fails is retried after 1 and then 5 minutes; after
+  the third failure Orca escalates to your mailbox and waits for you to assign
+  the task again.
+- In a git repository each member works in its own worktree and branch; in a
+  folder project every member shares one folder, so split work by path and
+  name the paths in each spec. `team show` lists each member's `worktree_id`,
+  `current_task`, `waiting_reason`, and the team's `goals` with their progress.
+- When every task of a goal is done, Orca sends you one `REVIEW GOAL <ref>:`
+  message. Review, then merge the members' branches (your git host's pull or
+  merge requests, or a local merge) or, in a folder project, check the pieces
+  fit together. File another task under the goal if something is missing, then:
+  `ORCA team goal close --team <team> --goal <goal_ref> --summary <text> --json`.
+  `--cancel` stops a goal and cancels its tasks that have not started.
+- Raw `worker-start` still works for work outside a goal, but a member's
+  terminal lives in its own worktree, so pass both:
+  `ORCA orchestration worker-start --task <task_id> --terminal <member_handle> --worktree id:<member_worktree_id> --json`.
+  A member already working a task refuses it.
+- Address mail by role or name: `--to @role:<role>` or `--to @member:<slug>`;
+  members reach you at `@role:manager`. Mail reaches a member whether it is
+  working or idle. A stopped member comes back as a `recipient_unreachable`
+  warning with nothing delivered; one Orca cannot reach right now gets the same
+  warning and its mail waits for it.
+- Members may message each other the same way. Once two of them have traded 6
+  replies in one thread, Orca holds the next message and sends it to you as one
+  escalation; decide what they need and tell them.
 - A paused member or a paused team refuses new dispatches. Do not route around a
   pause; tell the human instead.
 - Steer a busy member without a new task:
@@ -89,4 +112,6 @@ binding, run `ORCA orchestration run-use --id <team_run_id>`.
 - Keep the shared plan in the board file your brief names (one copy under the
   repository's main checkout, shared by every member); members read it first.
 - Outside work arrives as queued `[mission:…]`, `[webhook]`, or `ENRICH TASK:`
-  messages. Turn them into tasks on the board before dispatching.
+  messages. File each as a task with `team task add --assignee`, or group
+  larger work under a goal of your own:
+  `ORCA team goal create --team <team> --title <title> --json`.

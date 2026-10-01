@@ -8,6 +8,7 @@
  * gate_resolved, hire_proposed, hire_decided, member_added, member_state, member_paused,
  * member_resumed.
  * Parties today: member, operator, external, system, agent, team.
+ * Goal statuses today: `requested` on goal_review; `completed` or `cancelled` on goal_closed.
  */
 export type TeamActivityEvent = {
   /** Monotonic per host; the poll cursor. A merged group send carries its last row's sequence. */

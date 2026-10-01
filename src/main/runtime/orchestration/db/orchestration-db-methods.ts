@@ -53,8 +53,10 @@ import type { SchemaColumnProbesMethods } from './schema/schema-column-probes'
 import type { TaskStoreMethods } from './tasks/task-store'
 import type { TeamMemberSpendStoreMethods } from './teams/team-member-spend-store'
 import type { TeamActivityStoreMethods } from './teams/team-activity-store'
+import type { TeamAssignedWorkStoreMethods } from './teams/team-assigned-work-store'
 import type { TeamAutomationStoreMethods } from './teams/team-automation-store'
 import type { TeamBoardStoreMethods } from './teams/team-board-store'
+import type { TeamGoalStoreMethods } from './teams/team-goal-store'
 import type { TeamInboxStoreMethods } from './teams/team-inbox-store'
 import type { TeamHireProposalStoreMethods } from './teams/team-hire-proposal-store'
 import type { TeamMemberStoreMethods } from './teams/team-member-store'
@@ -152,4 +154,6 @@ export type OrchestrationDbMethods = AttemptObservationStoreMethods &
   TeamAutomationStoreMethods &
   TeamMemberSpendStoreMethods &
   TeamTaskMetaStoreMethods &
-  TeamActivityStoreMethods
+  TeamActivityStoreMethods &
+  TeamAssignedWorkStoreMethods &
+  TeamGoalStoreMethods

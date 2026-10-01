@@ -5,20 +5,21 @@ import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { resolveLiveTeamMemberHandle, stopTeamMember } from '../runtime/team/team-member-lifecycle'
 import { TeamClosingTime } from '../runtime/team/team-closing-time'
 import { watchTeamMemberStatusEdges } from '../runtime/team/team-member-status-edges'
-import { TeamMemberTurnLedger } from '../runtime/team/team-member-turn-ledger'
 import { readTeamMemberTurnState } from '../runtime/team/team-member-turn-state'
 import { TeamMissionScheduler } from '../runtime/team/team-mission-scheduler'
-import { TeamQueueDispatcher, queuedTeamTurnKind } from '../runtime/team/team-queue-dispatcher'
+import { TeamQueueDispatcher } from '../runtime/team/team-queue-dispatcher'
 import { TeamSpendMonitor } from '../runtime/team/team-spend-monitor'
 import { TeamToolLoopBreaker } from '../runtime/team/team-tool-loop-breaker'
 import { TeamWebhookServer } from '../runtime/team/team-webhook-server'
+import { teamWorkSchedulerFor } from '../runtime/team/team-work-scheduler-for-runtime'
 import { mainProcessState as state } from './main-process-state'
 
 const ACTIVITY_PRUNE_INTERVAL_MS = 60 * 60_000
 
 /**
- * Background loops for standing teams: spend and breakers, idle delivery of queued messages, and
- * the wind-down. Returns the disposer that stops every one of them; quit calls it.
+ * Background loops for standing teams: spend and breakers, idle delivery of queued messages,
+ * starting assigned tasks, and the wind-down. Returns the disposer that stops every one of them;
+ * quit calls it.
  */
 export function startTeamBackgroundLoops(runtime: OrcaRuntimeService): () => void {
   const getDb = () => runtime.getOrchestrationDb()
@@ -46,9 +47,8 @@ export function startTeamBackgroundLoops(runtime: OrcaRuntimeService): () => voi
   monitor.start()
 
   // One ledger for every loop that types into a member, so two never spend the same idle edge.
-  const turns = new TeamMemberTurnLedger({
-    queuedKind: (memberId) => queuedTeamTurnKind(getDb(), memberId)
-  })
+  const scheduler = teamWorkSchedulerFor(runtime)
+  const { turns } = scheduler
   const queue = new TeamQueueDispatcher({
     getDb,
     turns,
@@ -59,6 +59,7 @@ export function startTeamBackgroundLoops(runtime: OrcaRuntimeService): () => voi
     }
   })
   queue.start()
+  scheduler.start()
   const stopStatusEdges = watchTeamMemberStatusEdges({
     getDb,
     subscribe: (listener) => agentHookServer.subscribeStatusChanges(listener),
@@ -67,6 +68,7 @@ export function startTeamBackgroundLoops(runtime: OrcaRuntimeService): () => voi
         turns.noteWorking(member.id)
       }
       queue.wake()
+      scheduler.wake()
     }
   })
 
@@ -117,6 +119,7 @@ export function startTeamBackgroundLoops(runtime: OrcaRuntimeService): () => voi
     stopLoopBreaker()
     monitor.stop()
     queue.stop()
+    scheduler.stop()
     missions.stop()
     clearInterval(pruneActivity)
     webhooks.stop()

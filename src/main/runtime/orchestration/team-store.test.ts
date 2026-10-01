@@ -172,7 +172,7 @@ describe('team schema migration', () => {
     const reopened = new OrchestrationDb(path)
     try {
       expect(reopened.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
-      expect(SCHEMA_VERSION).toBe(44)
+      expect(SCHEMA_VERSION).toBe(45)
       expect(reopened.createTeam({ repoId: 'repo_1', name: 'Platform' }).status).toBe('active')
     } finally {
       reopened.close()
@@ -200,7 +200,7 @@ describe('team schema migration', () => {
 
     const reopened = new OrchestrationDb(path)
     try {
-      expect(reopened.db.pragma('user_version', { simple: true })).toBe(44)
+      expect(reopened.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
       for (const [table, column] of [
         ['teams', 'activity_pruned_through'],
         ['team_task_refs', 'assignee_member_id'],
@@ -220,6 +220,58 @@ describe('team schema migration', () => {
       const task = reopened.createTask({ runId: team.run_id, spec: 'Ship it' })
       const meta = reopened.assignTeamTask(team.id, task.id, member.id)
       expect(meta).toMatchObject({ kind: 'task', assignee_member_id: member.id, number: 1 })
+    } finally {
+      reopened.close()
+    }
+  })
+
+  it('adds start retries and the goal index to a v44 database, keeping its assignments', () => {
+    const path = join(dir, 'orchestration.db')
+    const seeded = new OrchestrationDb(path)
+    const team = seeded.createTeam({ repoId: 'repo_1', name: 'Platform' })
+    const member = seeded.addTeamMember(team.id, {
+      slug: 'jim',
+      roleSlug: 'engineer',
+      agent: 'codex'
+    })
+    const task = seeded.createTask({ runId: team.run_id, spec: 'Ship it' })
+    seeded.assignTeamTask(team.id, task.id, member.id)
+    seeded.db.exec(`
+      DROP INDEX idx_team_task_refs_goal;
+      ALTER TABLE team_task_refs DROP COLUMN start_failures;
+      ALTER TABLE team_task_refs DROP COLUMN retry_at;
+      ALTER TABLE team_task_refs DROP COLUMN escalated_at;
+      ALTER TABLE team_task_refs DROP COLUMN counted_dispatch_id;
+    `)
+    seeded.db.pragma('user_version = 44')
+    seeded.close()
+
+    const reopened = new OrchestrationDb(path)
+    try {
+      expect(reopened.db.pragma('user_version', { simple: true })).toBe(45)
+      expect(
+        reopened.db
+          .prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?")
+          .get('idx_team_task_refs_goal')
+      ).toBeDefined()
+      expect(reopened.getTeamTaskMeta(task.id)).toMatchObject({
+        assignee_member_id: member.id,
+        start_failures: 0,
+        retry_at: null,
+        escalated_at: null,
+        counted_dispatch_id: null
+      })
+      // The scheduler's query reads the new columns, so it must run on a migrated database.
+      expect(reopened.listStartableTeamTasks().map((row) => row.task_id)).toEqual([task.id])
+      reopened.recordTeamTaskStartFailure(task.id, {
+        retryAt: '2026-10-01T10:01:00.000Z',
+        escalated: false,
+        dispatchId: null
+      })
+      expect(reopened.getTeamTaskMeta(task.id)).toMatchObject({
+        start_failures: 1,
+        retry_at: '2026-10-01T10:01:00.000Z'
+      })
     } finally {
       reopened.close()
     }

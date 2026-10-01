@@ -1,5 +1,6 @@
 import type { CommandHandler } from './dispatch'
 import { BROWSER_HANDLER_GROUPS } from './browser-handler-groups'
+import { TEAM_HANDLER_GROUP } from './team-handler-group'
 
 export type HandlerGroup = {
   name: string
@@ -136,46 +137,7 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     ],
     load: async () => (await import('./handlers/orchestration.js')).ORCHESTRATION_HANDLERS
   },
-  {
-    name: 'team',
-    keys: [
-      'team create',
-      'team list',
-      'team show',
-      'team update',
-      'team log',
-      'team activity',
-      'team member add',
-      'team member update',
-      'team member rm',
-      'team member start',
-      'team member stop',
-      'team member pause',
-      'team member resume',
-      'team member grant',
-      'team member export',
-      'team member import',
-      'team member cap',
-      'team member send',
-      'team answer',
-      'team gate-resolve',
-      'team hire-propose',
-      'team hire-decide',
-      'team mission add',
-      'team mission list',
-      'team mission enable',
-      'team mission disable',
-      'team mission rm',
-      'team triggers',
-      'team memory',
-      'team note read',
-      'team note write',
-      'team task add',
-      'team task assign',
-      'team closing-time'
-    ],
-    load: async () => (await import('./handlers/team.js')).TEAM_HANDLERS
-  },
+  TEAM_HANDLER_GROUP,
   {
     name: 'emulator',
     keys: [

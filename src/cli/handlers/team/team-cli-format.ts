@@ -1,3 +1,4 @@
+import type { TeamGoalSummary } from '../../../shared/team-goal'
 import type { CommandHandler } from '../../dispatch'
 import { getOptionalStringFlag, getRequiredStringFlag } from '../../flags'
 import { printResult } from '../../format'
@@ -26,6 +27,8 @@ export type TeamSnapshot = {
   pendingQuestions: { message_id: string; asker_handle: string; body: string }[]
   pendingGates: { id: string; question: string }[]
   pendingHires: { id: string; slug: string; role_slug: string; agent: string; rationale: string }[]
+  /** Absent from a host that predates goals. */
+  goals?: TeamGoalSummary[]
 }
 
 export function teamParams(flags: Map<string, string | boolean>): { team: string; repo?: string } {
@@ -75,6 +78,17 @@ export function formatSnapshot(value: TeamSnapshot): string {
     `Tasks (${value.tasks.length}):`,
     ...value.tasks.map((task) => `  ${task.id} [${task.status}] ${task.task_title ?? ''}`.trimEnd())
   ]
+  const goals = value.goals ?? []
+  if (goals.length > 0) {
+    lines.push(
+      '',
+      `Goals (${goals.length}):`,
+      ...goals.map(
+        (goal) =>
+          `  ${goal.ref ?? goal.id} [${goal.status} ${goal.progress.done}/${goal.progress.total}] ${goal.title}`
+      )
+    )
+  }
   const waiting = [
     ...value.pendingQuestions.map(
       (question) =>

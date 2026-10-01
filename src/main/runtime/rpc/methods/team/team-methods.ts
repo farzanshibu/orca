@@ -33,7 +33,7 @@ export const TEAM_METHODS = [
     handler: async (params, context) => {
       const repo = await context.runtime.showRepo(params.repo)
       const db = context.runtime.getOrchestrationDb()
-      requireNoTeamMemberCaller(context, db, 'create teams')
+      await requireNoTeamMemberCaller(context, db, 'create teams')
       return {
         team: db.createTeam({ repoId: repo.id, name: params.name, charter: params.charter })
       }
@@ -73,12 +73,13 @@ export const TEAM_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'change the team')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'change the team')
       return {
         team: publicTeam(
           db.updateTeam(team.id, {
             charter: params.charter,
-            status: params.status ? parseTeamStatus(params.status) : undefined
+            status: params.status ? parseTeamStatus(params.status) : undefined,
+            maxParallel: params.maxParallel
           })
         )
       }

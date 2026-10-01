@@ -25,10 +25,11 @@ export const TEAM_COMMAND_SPECS: CommandSpec[] = [
   },
   {
     path: ['team', 'update'],
-    summary: 'Change a team charter, or pause, resume, or archive it',
+    summary: 'Change a team charter or its parallel limit, or pause, resume, or archive it',
     usage:
-      'orca team update --team <id|name> [--charter <text>] [--status active|paused|archived] [--json]',
-    allowedFlags: [...GLOBAL_FLAGS, ...TEAM, 'charter', 'status']
+      'orca team update --team <id|name> [--charter <text>] [--status active|paused|archived] [--max-parallel <n|none>] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, ...TEAM, 'charter', 'status', 'max-parallel'],
+    notes: ['--max-parallel caps how many members Orca starts assigned tasks on at once.']
   },
   {
     path: ['team', 'log'],
@@ -199,9 +200,18 @@ export const TEAM_COMMAND_SPECS: CommandSpec[] = [
   },
   {
     path: ['team', 'task', 'add'],
-    summary: 'File a task on the team board; --enrich has the manager write it up first',
-    usage: 'orca team task add --team <id|name> --title <text> [--spec <text>] [--enrich] [--json]',
-    allowedFlags: [...GLOBAL_FLAGS, ...TEAM, 'title', 'spec', 'enrich']
+    summary:
+      'File a task on the team board, optionally under a goal, with an owner and dependencies',
+    usage:
+      'orca team task add --team <id|name> --title <text> [--spec <text>] [--goal <ref|id>] [--assignee <slug>] [--deps <ref,ref>] [--enrich] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, ...TEAM, 'title', 'spec', 'enrich', 'goal', 'assignee', 'deps'],
+    notes: [
+      "Orca starts a task with --assignee in that member's terminal once its --deps are done and the member is free.",
+      '--enrich has the manager write the task up first; it cannot be combined with --goal, --assignee, or --deps.'
+    ],
+    examples: [
+      'orca team task add --team Platform --goal plat-3 --title "API handlers" --spec "Implement the v2 handlers" --assignee jim --deps plat-4'
+    ]
   },
   {
     path: ['team', 'task', 'assign'],
@@ -210,6 +220,21 @@ export const TEAM_COMMAND_SPECS: CommandSpec[] = [
       'orca team task assign --team <id|name> --task <ref|id> (--member <slug> | --unassign) [--json]',
     allowedFlags: [...GLOBAL_FLAGS, ...TEAM, 'task', 'member', 'unassign'],
     examples: ['orca team task assign --team Platform --task plat-3 --member jim']
+  },
+  {
+    path: ['team', 'goal', 'create'],
+    summary: 'Give the team a goal; its manager splits it into tasks that Orca starts',
+    usage: 'orca team goal create --team <id|name> --title <text> [--spec <text>] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, ...TEAM, 'title', 'spec'],
+    examples: ['orca team goal create --team Platform --title "Ship the v2 API"']
+  },
+  {
+    path: ['team', 'goal', 'close'],
+    summary: 'Close a goal whose tasks are finished, or stop it with --cancel',
+    usage:
+      'orca team goal close --team <id|name> --goal <ref|id> [--summary <text>] [--cancel] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, ...TEAM, 'goal', 'summary', 'cancel'],
+    notes: ['--cancel also cancels the goal tasks that have not started; running ones finish.']
   },
   {
     path: ['team', 'closing-time'],

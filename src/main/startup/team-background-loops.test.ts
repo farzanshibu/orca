@@ -4,6 +4,7 @@ import type { AgentHookStatusChangeEntry } from '../agent-hooks/server/server-ty
 import { OrchestrationDb } from '../runtime/orchestration/db'
 import { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { TeamWebhookServer } from '../runtime/team/team-webhook-server'
+import { teamWorkSchedulerFor } from '../runtime/team/team-work-scheduler-for-runtime'
 
 vi.mock('./main-process-state', () => ({
   mainProcessState: { claudeUsage: null, codexUsage: null }
@@ -95,12 +96,12 @@ describe('team background loops', () => {
     const timersBefore = vi.getTimerCount()
 
     dispose = startTeamBackgroundLoops(runtime)
-    // Spend, queue, missions, activity prune, webhook sync, closing time.
-    expect(vi.getTimerCount()).toBe(timersBefore + 6)
+    // Spend, queue, work scheduler, missions, activity prune, webhook sync, closing time.
+    expect(vi.getTimerCount()).toBe(timersBefore + 7)
     expect(statusListeners.size).toBe(1)
     publish('done')
-    // The pending wake-up is one more timer the disposer has to clear.
-    expect(vi.getTimerCount()).toBe(timersBefore + 7)
+    // The queue's and the scheduler's pending wake-ups are two more timers the disposer clears.
+    expect(vi.getTimerCount()).toBe(timersBefore + 9)
 
     dispose()
     expect(vi.getTimerCount()).toBe(timersBefore)
@@ -111,5 +112,21 @@ describe('team background loops', () => {
     expect(stopWebhooks).toHaveBeenCalledTimes(1)
     dispose()
     expect(stopWebhooks).toHaveBeenCalledTimes(1)
+  })
+
+  it('wakes the work scheduler on a status edge, then on its tick, until disposed', async () => {
+    seedJimWithQueue()
+    const tick = vi.spyOn(teamWorkSchedulerFor(runtime), 'tick')
+    dispose = startTeamBackgroundLoops(runtime)
+
+    publish('done')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(tick).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(3_000)
+    expect(tick).toHaveBeenCalledTimes(2)
+
+    dispose()
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(tick).toHaveBeenCalledTimes(2)
   })
 })

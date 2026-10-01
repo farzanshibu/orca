@@ -140,6 +140,34 @@ export function attributeTeamGateResolution(
 }
 
 /**
+ * Says who settled a task when no worker did, such as a goal the manager closed. `status`
+ * replaces the task's own when the feed has a better word for it, such as `cancelled`.
+ */
+export function attributeTeamTaskSettlement(
+  this: OrchestrationDb,
+  taskId: string,
+  settlement: { from: TeamActivityParticipant; to: TeamActivityParticipant; status?: string }
+): void {
+  this.db
+    .prepare(
+      `UPDATE team_activity
+       SET from_party = ?, from_member_id = ?, to_party = ?, to_member_id = ?,
+           status = COALESCE(?, status)
+       WHERE sequence = (
+         SELECT MAX(sequence) FROM team_activity WHERE kind = 'task_settled' AND task_id = ?
+       )`
+    )
+    .run(
+      settlement.from.party,
+      settlement.from.memberId ?? null,
+      settlement.to.party,
+      settlement.to.memberId ?? null,
+      settlement.status ?? null,
+      taskId
+    )
+}
+
+/**
  * Drops activity older than `maxAgeDays` and beyond the newest `maxRowsPerTeam`, and remembers
  * how far it pruned so a poll cursor from before then restarts instead of silently skipping.
  */
@@ -188,6 +216,7 @@ export type TeamActivityStoreMethods = {
   getLatestTeamActivitySequence: typeof getLatestTeamActivitySequence
   attributeTeamActivityMessage: typeof attributeTeamActivityMessage
   attributeTeamGateResolution: typeof attributeTeamGateResolution
+  attributeTeamTaskSettlement: typeof attributeTeamTaskSettlement
   pruneTeamActivity: typeof pruneTeamActivity
 }
 
@@ -198,6 +227,7 @@ export function attachTeamActivityStore(ctor: { prototype: object }): void {
     getLatestTeamActivitySequence,
     attributeTeamActivityMessage,
     attributeTeamGateResolution,
+    attributeTeamTaskSettlement,
     pruneTeamActivity
   })
 }
