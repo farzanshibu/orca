@@ -18679,6 +18679,8 @@
     "floor": {
       "office": "Office",
       "openDesk": "Open desk",
+      "openDeskRole": "Open desk · {{role}}",
+      "openLeadDesk": "Open desk · Lead",
       "manager": "Lead",
       "hire": "Add member",
       "noTask": "No ticket assigned",

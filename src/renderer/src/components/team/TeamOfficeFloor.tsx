@@ -1,18 +1,19 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
 import { translate } from '@/i18n/i18n'
-import { FloorCharacter } from './office-floor-character'
-import { floorColumns, floorLayout, type FloorDesk } from './office-floor-layout'
-import { FloorRoster, floorActivityLabel, type PlacedMember } from './office-floor-roster'
-import { ROAM_INTERVAL_MS, roamTargets } from './office-floor-roaming'
+import { SeatedCharacter } from './office-floor-character'
+import { ChairBack, ChairSeat, DeskTop, type ScreenState } from './office-floor-desk-art'
 import {
-  ChairBack,
-  ChairSeat,
-  DeskTop,
-  OfficeBackdrop,
-  type ScreenState
-} from './office-floor-scene'
+  FloorDeskTargets,
+  type DeskHirePrefill,
+  type FloorDeskTarget
+} from './office-floor-desk-targets'
+import { FloorOverlay, type FloorBadge, type FloorNameplate } from './office-floor-overlay'
+import { officeFloorPlan, type FloorDesk, type OfficeFloorPlan } from './office-floor-plan'
+import { FloorRoster, floorActivityLabel, type PlacedMember } from './office-floor-roster'
+import { OfficeBackdrop } from './office-floor-scene'
+import type { FloorSeating } from './office-floor-seating'
 import { memberLook } from './office-floor-sprite'
 import { floorActivity, summarizeFloor } from './office-floor-state'
 import { parseSqliteUtc } from './TeamTaskBoard'
@@ -20,12 +21,15 @@ import type { TeamAttention } from './team-attention'
 import { teamMemberLiveness } from './team-member-liveness'
 import type { TeamLogMessage, TeamMember, TeamTask } from './team-snapshot-types'
 import { teamMemberCurrentTask } from './team-task-owner'
+import { useOfficeFloorPlan } from './use-office-floor-plan'
 import { useTeamClock } from './use-team-clock'
 
 // Mail newer than this marks the sender and recipient desks, so the floor shows traffic, not history.
 const MAIL_WINDOW_MS = 10_000
 // Upscaling past this makes the pixel art blurry-large on wide monitors.
 const MAX_ART_SCALE = 3
+// From a desk cell's top to its nameplate, just under the chair.
+const NAMEPLATE_OFFSET = 57
 
 function FloorSummaryLine({
   placed,
@@ -75,94 +79,77 @@ function FloorSummaryLine({
   return <span className="text-[12px] text-muted-foreground">{parts.join(' · ')}</span>
 }
 
-function useContainerWidth(ref: React.RefObject<HTMLElement | null>): number {
-  const [width, setWidth] = useState(0)
-  useLayoutEffect(() => {
-    const element = ref.current
-    if (!element) {
-      return undefined
-    }
-    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
-    observer.observe(element)
-    setWidth(element.getBoundingClientRect().width)
-    return () => observer.disconnect()
-  }, [ref])
-  return width
+type DeskEntry = { desk: FloorDesk; entry: PlacedMember | undefined; prefill: DeskHirePrefill }
+
+/** Every desk on the plan with whoever the seating puts at it. */
+function deskEntries(
+  plan: OfficeFloorPlan,
+  seating: FloorSeating,
+  placed: readonly PlacedMember[]
+): DeskEntry[] {
+  const byId = new Map(placed.map((entry) => [entry.member.id, entry]))
+  const manager = placed.find((entry) => seating.seats.get(entry.member.id)?.kind === 'manager')
+  return [
+    { desk: plan.managerDesk, entry: manager, prefill: { manager: true } },
+    ...plan.pods.flatMap((pod) => {
+      const seated = seating.pods[pod.index]
+      return pod.desks.map((desk, index) => ({
+        desk,
+        entry: byId.get(seated?.desks[index] ?? ''),
+        prefill: seated?.role ? { role: seated.role } : {}
+      }))
+    })
+  ]
 }
 
-/** Keyboard and pointer target for a desk, plus the nameplate under it. */
-function DeskPlate({
-  desk,
-  label,
-  status,
-  dim,
-  onActivate
-}: {
-  desk: FloorDesk
-  label: string
-  /** A second line under the name, for a state the desk alone does not show. */
-  status?: string
-  dim: boolean
-  onActivate: () => void
-}): React.JSX.Element {
-  const { x, y, w, h } = desk.cell
-  return (
-    <g
-      role="button"
-      tabIndex={0}
-      aria-label={status ? `${label}, ${status}` : label}
-      className="team-office-desk cursor-pointer outline-none"
-      onClick={onActivate}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          onActivate()
-        }
-      }}
-    >
-      <rect x={x + 2} y={y} width={w - 4} height={h} rx={3} className="team-office-desk-hit" />
-      <text
-        x={x + w / 2}
-        y={y + 62}
-        textAnchor="middle"
-        data-dim={dim ? 'true' : undefined}
-        className="team-office-label"
-      >
-        {label}
-      </text>
-      {status ? (
-        <text
-          x={x + w / 2}
-          y={y + 68}
-          textAnchor="middle"
-          data-dim="true"
-          className="team-office-label"
-        >
-          {status}
-        </text>
-      ) : null}
-    </g>
-  )
+/** A member with no recent update keeps its seat, but its monitor claims nothing about its work. */
+function screenFor(entry: PlacedMember | undefined): ScreenState {
+  if (!entry) {
+    return 'vacant'
+  }
+  return entry.activity === 'off' || entry.activity === 'unverifiable' ? 'off' : entry.activity
+}
+
+// A stopped or paused member is out of the office; everyone else is at their desk.
+function isPresent(entry: PlacedMember | undefined): entry is PlacedMember {
+  return entry !== undefined && entry.activity !== 'off'
+}
+
+/** Wide floors also cap by viewport height so the roster stays in view; narrow ones scroll. */
+function floorMaxWidth(plan: OfficeFloorPlan): string | number {
+  const scaled = plan.width * MAX_ART_SCALE
+  if (plan.variant === 'narrow') {
+    return scaled
+  }
+  // Sized from a one-row floor, so more pod rows make the floor longer instead of shrinking the art.
+  const aspect = plan.width / officeFloorPlan(plan.variant, 1).height
+  return `min(${scaled}px, calc(64vh * ${aspect}))`
 }
 
 export function TeamOfficeFloor({
+  teamName,
   members,
   tasks,
   log,
   attention,
+  whiteboard,
   onOpenRoom,
   onAddMember
 }: {
+  teamName: string
   members: readonly TeamMember[]
   tasks: readonly TeamTask[]
   log: readonly TeamLogMessage[]
   attention: TeamAttention
+  /** What is written on the whiteboard. Nothing supplies it yet, so the board shows scribbles. */
+  whiteboard?: React.ReactNode
   onOpenRoom: (memberId: string) => void
-  onAddMember: () => void
+  /** `prefill` is set when a vacant desk was clicked: that pod's role, or the manager's office. */
+  onAddMember: (prefill?: DeskHirePrefill) => void
 }): React.JSX.Element {
   const now = useTeamClock(2_000)
   const frameRef = useRef<HTMLDivElement>(null)
-  const containerWidth = useContainerWidth(frameRef)
+  const { plan, seating } = useOfficeFloorPlan(frameRef, members)
   const toolByPane = useAppStore(
     useShallow((state) =>
       Object.fromEntries(
@@ -201,45 +188,41 @@ export function TeamOfficeFloor({
       hasMail: member.live_handle !== null && mailHandles.has(member.live_handle)
     }
   })
-  // Managers come first so the lead's corner office is stable when several are flagged.
+  // Managers come first so the roster leads with whoever runs the team.
   const ordered = [...placed].sort((a, b) => b.member.is_manager - a.member.is_manager)
-  const manager = ordered.find((entry) => entry.member.is_manager)
-  const staff = ordered.filter((entry) => entry !== manager)
-  // One spare desk is always open, so hiring has an obvious place on the floor.
-  const layout = floorLayout(staff.length + 1, floorColumns(containerWidth))
-  const deskOf = new Map<string, FloorDesk>()
-  if (manager) {
-    deskOf.set(manager.member.id, layout.managerDesk)
-  }
-  staff.forEach((entry, index) => deskOf.set(entry.member.id, layout.desks[index]))
-  const openDesk = layout.desks[staff.length]
-  const targets = roamTargets(
-    ordered.map(({ member, activity }) => ({
-      id: member.id,
-      slug: member.slug,
-      activity
-    })),
-    layout.idleSpots.length,
-    Math.floor(now / ROAM_INTERVAL_MS)
+  const desks = plan ? deskEntries(plan, seating, placed) : []
+  const targets: FloorDeskTarget[] = desks.map(({ desk, entry, prefill }) =>
+    entry ? { desk, entry } : { desk, entry, prefill }
   )
-  const seatedIds = new Set(
-    ordered.filter((entry) => targets.get(entry.member.id)?.kind === 'desk').map((e) => e.member.id)
+  const nameplates: FloorNameplate[] = desks.flatMap(({ desk, entry }) =>
+    entry
+      ? [
+          {
+            id: entry.member.id,
+            at: { x: desk.cell.x + desk.cell.w / 2, y: desk.cell.y + NAMEPLATE_OFFSET },
+            width: desk.cell.w,
+            name: entry.member.display_name,
+            status:
+              entry.activity === 'unverifiable'
+                ? floorActivityLabel(entry.activity, false)
+                : undefined,
+            dim: entry.activity === 'off'
+          }
+        ]
+      : []
   )
-
-  // A member with no recent update keeps its seat, but its monitor claims nothing about its work.
-  const screenFor = (entry: PlacedMember | undefined): ScreenState => {
-    if (!entry) {
-      return 'vacant'
-    }
-    if (entry.activity === 'off' || entry.activity === 'unverifiable') {
-      return 'off'
-    }
-    return seatedIds.has(entry.member.id) ? entry.activity : 'idle'
-  }
-  const deskEntries: { desk: FloorDesk; entry: PlacedMember | undefined }[] = [
-    { desk: layout.managerDesk, entry: manager },
-    ...layout.desks.map((desk, index) => ({ desk, entry: staff[index] }))
-  ]
+  const badges: FloorBadge[] = desks.flatMap(({ desk, entry }) =>
+    entry && (entry.needsYou || entry.hasMail)
+      ? [
+          {
+            id: entry.member.id,
+            // Beside the head: above it is the monitor.
+            at: { x: desk.seat.x + 13, y: desk.seat.y - 15 },
+            kind: entry.needsYou ? ('question' as const) : ('mail' as const)
+          }
+        ]
+      : []
+  )
 
   return (
     <div className="scrollbar-sleek flex h-full w-full flex-col gap-3 overflow-y-auto">
@@ -250,85 +233,64 @@ export function TeamOfficeFloor({
         <FloorSummaryLine placed={placed} waitingOnYou={attention.count} />
       </div>
       <div ref={frameRef} className="w-full">
-        <svg
-          viewBox={`0 0 ${layout.width} ${layout.height}`}
-          shapeRendering="crispEdges"
-          role="group"
-          aria-label={translate('team.floor.office', 'Office')}
-          className="team-office mx-auto block h-auto w-full rounded-lg"
-          // Wide floors also cap by viewport height so the roster stays in view; narrow ones scroll.
-          style={{
-            maxWidth: layout.breakRoomBeside
-              ? `min(${layout.width * MAX_ART_SCALE}px, calc(64vh * ${layout.width / layout.height}))`
-              : layout.width * MAX_ART_SCALE
-          }}
-        >
-          <OfficeBackdrop layout={layout} />
-          {deskEntries.map(({ desk, entry }) => (
-            <g key={`${desk.cell.x}:${desk.cell.y}`}>
-              <DeskTop desk={desk} state={screenFor(entry)} />
-              {entry && seatedIds.has(entry.member.id) ? null : (
-                <>
-                  <ChairSeat x={desk.cell.x} y={desk.cell.y} />
-                  <ChairBack x={desk.cell.x} y={desk.cell.y} />
-                </>
-              )}
-            </g>
-          ))}
-          {ordered.map((entry) => {
-            const target = targets.get(entry.member.id)
-            const desk = deskOf.get(entry.member.id)
-            const spot =
-              target?.kind === 'spot'
-                ? layout.idleSpots[target.index]
-                : target?.kind === 'desk'
-                  ? desk?.seat
-                  : undefined
-            if (!spot) {
-              return null
-            }
-            return (
-              <FloorCharacter
-                key={entry.member.id}
-                id={entry.member.id}
-                name={entry.member.display_name}
-                look={memberLook(entry.member.slug, Boolean(entry.member.is_manager))}
-                needsYou={entry.needsYou}
-                seated={target?.kind === 'desk'}
-                hasMail={entry.hasMail}
-                x={spot.x}
-                y={spot.y}
-                onOpenRoom={onOpenRoom}
-              />
-            )
-          })}
-          {deskEntries.map(({ desk, entry }) =>
-            entry ? (
-              <DeskPlate
-                key={entry.member.id}
-                desk={desk}
-                label={entry.member.display_name}
-                status={
-                  entry.activity === 'unverifiable'
-                    ? floorActivityLabel(entry.activity, false)
-                    : undefined
-                }
-                dim={entry.activity === 'off'}
-                onActivate={() => onOpenRoom(entry.member.id)}
-              />
-            ) : null
-          )}
-          {openDesk ? (
-            <DeskPlate
-              desk={openDesk}
-              label={translate('team.floor.openDesk', 'Open desk')}
-              dim
-              onActivate={onAddMember}
+        {plan ? (
+          <div
+            role="group"
+            aria-label={translate('team.floor.office', 'Office')}
+            className="relative mx-auto overflow-hidden rounded-lg"
+            style={{ maxWidth: floorMaxWidth(plan) }}
+          >
+            <svg
+              viewBox={`0 0 ${plan.width} ${plan.height}`}
+              aria-hidden="true"
+              className="team-office block h-auto w-full"
+            >
+              <OfficeBackdrop plan={plan} whiteboardBlank={whiteboard != null} />
+              {desks.map(({ desk, entry }) => (
+                <g key={desk.anchor}>
+                  <DeskTop desk={desk} state={screenFor(entry)} />
+                  {isPresent(entry) ? null : (
+                    <>
+                      <ChairSeat x={desk.cell.x} y={desk.cell.y} />
+                      <ChairBack x={desk.cell.x} y={desk.cell.y} />
+                    </>
+                  )}
+                </g>
+              ))}
+            </svg>
+            <FloorDeskTargets
+              plan={plan}
+              targets={targets}
+              onOpenRoom={onOpenRoom}
+              onHire={onAddMember}
             />
-          ) : null}
-        </svg>
+            {/* Over the desk targets and blind to the pointer, so a desk stays clickable through its occupant. */}
+            <svg
+              viewBox={`0 0 ${plan.width} ${plan.height}`}
+              aria-hidden="true"
+              className="team-office pointer-events-none absolute inset-0 h-full w-full"
+            >
+              {desks.map(({ desk, entry }) =>
+                isPresent(entry) ? (
+                  <SeatedCharacter
+                    key={entry.member.id}
+                    desk={desk}
+                    look={memberLook(entry.member.slug, Boolean(entry.member.is_manager))}
+                  />
+                ) : null
+              )}
+            </svg>
+            <FloorOverlay
+              plan={plan}
+              teamName={teamName}
+              whiteboard={whiteboard}
+              nameplates={nameplates}
+              badges={badges}
+            />
+          </div>
+        ) : null}
       </div>
-      <FloorRoster placed={ordered} onOpenRoom={onOpenRoom} onAddMember={onAddMember} />
+      <FloorRoster placed={ordered} onOpenRoom={onOpenRoom} onAddMember={() => onAddMember()} />
     </div>
   )
 }

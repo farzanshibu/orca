@@ -12,7 +12,7 @@ import { TeamTaskBoard } from './TeamTaskBoard'
 import { TeamTaskComposer } from './TeamTaskComposer'
 import type { TeamAttention } from './team-attention'
 import { isTeamPageTab } from './team-page-tab'
-import { runTeamMemberAction } from './team-runtime-client'
+import { runTeamMemberAction, type TeamMemberDraft } from './team-runtime-client'
 import type { TeamSnapshot } from './team-snapshot-types'
 import { teamMemberCurrentTask } from './team-task-owner'
 import { useTeamClock } from './use-team-clock'
@@ -32,7 +32,8 @@ export function TeamPageTabs({
   /** `act` bound to one key, with whether that key is in flight, so only its controls disable. */
   scoped: (key: string) => { busy: boolean; act: TeamAct }
   onOpenRoom: (memberId: string) => void
-  onAddMember: () => void
+  /** Opens the hire dialog, starting from `initial` when a vacant desk asked for it. */
+  onAddMember: (initial?: Partial<TeamMemberDraft>) => void
 }): React.JSX.Element {
   const { target, act, pendingActions } = state
   const tab = useAppStore((s) => s.teamPageTab)
@@ -68,6 +69,9 @@ export function TeamPageTabs({
       </TabsList>
       <TabsContent value="floor" className="flex min-h-0">
         <TeamOfficeFloor
+          // Seats are remembered per mounted floor, so another team must start from an empty one.
+          key={team}
+          teamName={snapshot.team.name}
           members={snapshot.members}
           tasks={snapshot.tasks}
           log={state.log}

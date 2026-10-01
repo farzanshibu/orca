@@ -48,22 +48,11 @@ function currentLine({ activity, tool, task }: PlacedMember): string {
     : translate('team.floor.noActivity', 'Nothing in flight')
 }
 
-function RosterCard({
-  entry,
-  onOpenRoom
-}: {
-  entry: PlacedMember
-  onOpenRoom: (memberId: string) => void
-}): React.JSX.Element {
+/** Who a member is and what they are doing; the roster card and the desk hover card both show it. */
+export function MemberSummary({ entry }: { entry: PlacedMember }): React.JSX.Element {
   const { member, activity } = entry
   return (
-    <button
-      type="button"
-      data-activity={activity}
-      data-needs-you={entry.needsYou ? 'true' : undefined}
-      onClick={() => onOpenRoom(member.id)}
-      className="flex w-60 shrink-0 snap-start items-center gap-3 rounded-lg border border-border bg-card p-2.5 text-left shadow-xs transition-colors outline-none hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring data-[activity=off]:opacity-70 data-[needs-you=true]:border-agent-question/50"
-    >
+    <>
       <Portrait look={memberLook(member.slug, Boolean(member.is_manager))} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
@@ -85,6 +74,26 @@ function RosterCard({
           {currentLine(entry)}
         </div>
       </div>
+    </>
+  )
+}
+
+function RosterCard({
+  entry,
+  onOpenRoom
+}: {
+  entry: PlacedMember
+  onOpenRoom: (memberId: string) => void
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      data-activity={entry.activity}
+      data-needs-you={entry.needsYou ? 'true' : undefined}
+      onClick={() => onOpenRoom(entry.member.id)}
+      className="flex w-60 shrink-0 snap-start items-center gap-3 rounded-lg border border-border bg-card p-2.5 text-left shadow-xs transition-colors outline-none hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring data-[activity=off]:opacity-70 data-[needs-you=true]:border-agent-question/50"
+    >
+      <MemberSummary entry={entry} />
     </button>
   )
 }

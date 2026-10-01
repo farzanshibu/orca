@@ -15,7 +15,12 @@ import { TeamPageTabs } from './TeamPageTabs'
 import { TeamCreateDialog, TeamMemberDialog } from './TeamSetupDialogs'
 import { TeamTemplateImportDialog } from './TeamTemplateImportDialog'
 import { collectTeamAttention, NO_TEAM_ATTENTION } from './team-attention'
-import { addTeamMember, createTeam, importTeamMember } from './team-runtime-client'
+import {
+  addTeamMember,
+  createTeam,
+  importTeamMember,
+  type TeamMemberDraft
+} from './team-runtime-client'
 import { useTeamPageState, type TeamAct } from './use-team-page-state'
 
 export default function TeamPage(): React.JSX.Element {
@@ -23,6 +28,11 @@ export default function TeamPage(): React.JSX.Element {
   const { target, snapshot, act, pendingActions } = state
   const [createOpen, setCreateOpen] = useState(false)
   const [memberOpen, setMemberOpen] = useState(false)
+  const [memberInitial, setMemberInitial] = useState<Partial<TeamMemberDraft> | undefined>()
+  const openMemberDialog = (initial?: Partial<TeamMemberDraft>): void => {
+    setMemberInitial(initial)
+    setMemberOpen(true)
+  }
   const [importOpen, setImportOpen] = useState(false)
   const [roomMemberId, setRoomMemberId] = useState<string | null>(null)
   const roomMember = snapshot?.members.find((member) => member.id === roomMemberId) ?? null
@@ -62,7 +72,7 @@ export default function TeamPage(): React.JSX.Element {
         <div className="flex-1" />
         {snapshot ? (
           <>
-            <Button size="sm" variant="secondary" onClick={() => setMemberOpen(true)}>
+            <Button size="sm" variant="secondary" onClick={() => openMemberDialog()}>
               <UserPlus />
               {translate('team.page.addMember', 'Add member')}
             </Button>
@@ -100,7 +110,7 @@ export default function TeamPage(): React.JSX.Element {
             attention={attention}
             scoped={scoped}
             onOpenRoom={setRoomMemberId}
-            onAddMember={() => setMemberOpen(true)}
+            onAddMember={openMemberDialog}
           />
         </div>
       ) : !state.loaded || state.selectedTeamId ? (
@@ -141,6 +151,7 @@ export default function TeamPage(): React.JSX.Element {
         <TeamMemberDialog
           key={memberOpen ? 'open' : 'closed'}
           open={memberOpen}
+          initial={memberInitial}
           hasManager={snapshot.members.some((member) => member.is_manager)}
           busy={pendingActions.includes('member-add')}
           onOpenChange={setMemberOpen}

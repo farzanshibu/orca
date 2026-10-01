@@ -3301,44 +3301,6 @@ html.native-shell .app-layout {
   --tof-pants: color-mix(in oklab, var(--color-blue-800) 70%, var(--color-zinc-800));
 }
 
-.team-office-label {
-  font-size: 5.5px;
-  font-weight: 500;
-  fill: var(--foreground);
-  stroke: var(--background);
-  stroke-width: 1.2px;
-  paint-order: stroke;
-  shape-rendering: auto;
-}
-
-.team-office-label[data-dim='true'] {
-  fill: var(--muted-foreground);
-}
-
-.team-office-desk-hit {
-  fill: transparent;
-  stroke: transparent;
-  stroke-width: 1px;
-  shape-rendering: auto;
-}
-
-.team-office-desk:hover .team-office-desk-hit {
-  stroke: color-mix(in oklab, var(--foreground) 35%, transparent);
-}
-
-.team-office-desk:focus-visible .team-office-desk-hit {
-  stroke: var(--ring);
-  stroke-width: 1.5px;
-}
-
-.team-office-character {
-  transition: transform 2.4s ease-in-out;
-}
-
-.team-office-character[data-moving='true'] .team-office-body {
-  animation: team-office-walk 0.3s steps(2) infinite;
-}
-
 .team-office-float {
   animation: team-office-float 1.6s ease-in-out infinite;
 }
@@ -3349,12 +3311,6 @@ html.native-shell .app-layout {
 
 .team-office-blink {
   animation: team-office-blink 1.4s steps(2) infinite;
-}
-
-@keyframes team-office-walk {
-  to {
-    transform: translateY(-1px);
-  }
 }
 
 @keyframes team-office-float {
@@ -3370,10 +3326,6 @@ html.native-shell .app-layout {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .team-office-character {
-    transition: none;
-  }
-  .team-office-character[data-moving='true'] .team-office-body,
   .team-office-float,
   .team-office-cursor,
   .team-office-blink {
