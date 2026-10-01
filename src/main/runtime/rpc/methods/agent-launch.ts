@@ -178,7 +178,7 @@ async function runAgentLaunch(
  * durable admission encloses the whole operation and this cache is bypassed entirely, so there is
  * one place that decides whether a launch runs.
  */
-export function runLegacyAgentLaunch(
+function runLegacyAgentLaunch(
   params: AgentLaunchParams,
   context: RpcContext
 ): Promise<AgentLaunchResult> {

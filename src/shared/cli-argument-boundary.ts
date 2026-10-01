@@ -52,6 +52,7 @@ export const CLI_BOOLEAN_FLAGS = new Set([
   'tab',
   'tasks',
   'text-stdin',
+  'unassign',
   'unread',
   'value-stdin',
   'wait'

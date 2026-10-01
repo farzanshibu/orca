@@ -415,6 +415,7 @@ import {
   TeamQueueRemoveParams,
   TeamQueueReorderParams,
   TeamShowParams,
+  TeamTaskAssignParams,
   TeamTaskCreateParams,
   TeamTriggersSetParams,
   TeamUpdateParams
@@ -1070,6 +1071,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'orchestration.teamQueueRemove': TeamQueueRemoveParams,
   'orchestration.teamQueueReorder': TeamQueueReorderParams,
   'orchestration.teamShow': TeamShowParams,
+  'orchestration.teamTaskAssign': TeamTaskAssignParams,
   'orchestration.teamTaskCreate': TeamTaskCreateParams,
   'orchestration.teamTriggers': TeamShowParams,
   'orchestration.teamTriggersSet': TeamTriggersSetParams,

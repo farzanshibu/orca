@@ -20,4 +20,5 @@ export const CURRENT_CONTRACT_VERSION = ORCHESTRATION_CONTRACT_VERSION
 // v41: derive outstanding deliveries from unread messages.
 // v42: structured-session Orca session id columns.
 // v43: standing teams, members, and hire proposals.
-export const SCHEMA_VERSION = 43
+// v44: team task assignment and goals, queue sources, and the team activity feed.
+export const SCHEMA_VERSION = 44

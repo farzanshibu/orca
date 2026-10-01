@@ -199,6 +199,20 @@ export const TeamTaskCreateParams = z.object({
   enrich: OptionalBoolean
 })
 
+export const TeamTaskAssignParams = z
+  .object({
+    ...TeamSelector,
+    /** A ref like `bmt-12` or a task id. */
+    task: requiredString('Missing --task'),
+    /** A member slug or id. */
+    member: OptionalString,
+    unassign: OptionalBoolean
+  })
+  .refine((params) => Boolean(params.member) !== Boolean(params.unassign), {
+    message: 'Pass --member <slug> or --unassign',
+    path: ['member']
+  })
+
 export const TeamClosingTimeParams = z.object({
   ...TeamSelector,
   /** Call off a Closing Time in progress; members already stopped stay stopped. */

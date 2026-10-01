@@ -9,8 +9,10 @@ import { OrcaRuntimeService } from '../../../orca-runtime'
 import { eraseRpcMethods } from '../../core'
 import { ORCHESTRATION_TEAM_METHODS } from '.'
 
-const launch = vi.hoisted(() => vi.fn())
-vi.mock('../agent-launch', () => ({ runLegacyAgentLaunch: launch }))
+const deliverPrompt = vi.hoisted(() => vi.fn())
+vi.mock('../agent-launch-terminal-prompt', () => ({
+  deliverTerminalAgentLaunchPrompt: deliverPrompt
+}))
 vi.mock('../../../../../shared/app-environment', () => ({
   getAppEnvironment: () => ({ isPackaged: () => true })
 }))
@@ -64,7 +66,8 @@ describe('orchestration team methods', () => {
     attestedHandle = null
     workspaceRoot = mkdtempSync(join(tmpdir(), 'orca-team-ws-'))
     livePanes.clear()
-    launch.mockReset()
+    deliverPrompt.mockReset()
+    deliverPrompt.mockResolvedValue(true)
     const repo: Repo = {
       id: 'repo_1',
       path: join(workspaceRoot, 'repo'),
@@ -234,26 +237,25 @@ describe('orchestration team methods', () => {
         mcpServers: [{ name: 'docs', command: 'npx', args: ['docs-mcp'] }]
       }
     })
-    launch.mockResolvedValue({
-      outcome: {
-        kind: 'terminal',
-        handle: 'term_pam',
-        paneKey: 'tab_p:33333333-3333-4333-8333-333333333333'
-      },
+    const createTerminal = vi.spyOn(runtime, 'createTerminal').mockResolvedValue({
+      handle: 'term_pam',
+      paneKey: 'tab_p:33333333-3333-4333-8333-333333333333',
       worktreeId: 'wt_team-pam',
-      receipt: {}
+      title: 'pam'
     })
     await expect(
       call('orchestration.teamMemberStart', { team: team.id, member: 'pam' })
     ).resolves.toMatchObject({ member: { terminal_handle: 'term_pam', desired_state: 'running' } })
-    expect(launch).toHaveBeenCalledWith(
+    // Always a terminal agent: a structured session has no pane for dispatches to reach.
+    expect(createTerminal).toHaveBeenCalledWith(
+      'id:wt_team-pam',
+      expect.objectContaining({ startupAgent: 'claude', surfaceOwner: false })
+    )
+    expect(deliverPrompt).toHaveBeenCalledWith(
       expect.objectContaining({
-        target: { kind: 'existing', worktree: 'id:wt_team-pam' },
-        prompt: expect.objectContaining({
-          text: expect.stringContaining('Skills to load before working: figma')
-        })
-      }),
-      expect.anything()
+        handle: 'term_pam',
+        text: expect.stringContaining('Skills to load before working: figma')
+      })
     )
     expect(db.getTeamMember(pam.id)?.worktree_id).toBe('wt_team-pam')
     const mcp = JSON.parse(readFileSync(join(workspaceRoot, 'team-pam', '.mcp.json'), 'utf8'))
@@ -285,10 +287,11 @@ describe('orchestration team methods', () => {
     })
     livePanes.delete('term_mgr')
     const pane = 'tab_m2:44444444-4444-4444-8444-444444444444'
-    launch.mockResolvedValue({
-      outcome: { kind: 'terminal', handle: 'term_mgr2', paneKey: pane },
+    const createTerminal = vi.spyOn(runtime, 'createTerminal').mockResolvedValue({
+      handle: 'term_mgr2',
+      paneKey: pane,
       worktreeId: 'wt_m',
-      receipt: {}
+      title: 'michael'
     })
     await call('orchestration.teamMemberStart', { team: team.id, member: 'michael' })
     expect(db.getRun(team.run_id)).toMatchObject({
@@ -296,9 +299,6 @@ describe('orchestration team methods', () => {
       coordinator_pane_key: pane
     })
     // Restarting in its own worktree keeps the member's branch.
-    expect(launch).toHaveBeenCalledWith(
-      expect.objectContaining({ target: { kind: 'existing', worktree: 'id:wt_m' } }),
-      expect.anything()
-    )
+    expect(createTerminal).toHaveBeenCalledWith('id:wt_m', expect.anything())
   })
 })

@@ -195,6 +195,14 @@ export const TEAM_COMMAND_SPECS: CommandSpec[] = [
     allowedFlags: [...GLOBAL_FLAGS, ...TEAM, 'title', 'spec', 'enrich']
   },
   {
+    path: ['team', 'task', 'assign'],
+    summary: "Assign a task to a member; Orca starts it in the member's terminal once it can",
+    usage:
+      'orca team task assign --team <id|name> --task <ref|id> (--member <slug> | --unassign) [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, ...TEAM, 'task', 'member', 'unassign'],
+    examples: ['orca team task assign --team Platform --task plat-3 --member jim']
+  },
+  {
     path: ['team', 'closing-time'],
     summary: 'Wind the team down: members wrap up and commit, then stop; the team pauses',
     usage: 'orca team closing-time --team <id|name> [--cancel] [--json]',

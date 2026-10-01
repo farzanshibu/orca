@@ -68,9 +68,14 @@ roster of named role agents that share one Run. When you are its manager, Orca
 binds you as that Run's coordinator when it starts you; if a restart lost the
 binding, run `ORCA orchestration run-use --id <team_run_id>`.
 
-- Dispatch to members by reusing their terminals:
-  `ORCA orchestration worker-start --task <task_id> --terminal <member_handle> --json`.
-  `team show` lists each member's `live_handle`, role, and `paused_at`.
+- Assign work to members; Orca starts each task in that member's own terminal
+  and worktree once the task is ready and the member is free:
+  `ORCA team task assign --team <team> --task <ref> --member <slug> --json`.
+  Raw `worker-start` also works, but a member's terminal lives in its own
+  worktree, so pass both: `ORCA orchestration worker-start --task <task_id>
+  --terminal <member_handle> --worktree id:<member_worktree_id> --json`.
+  `team show` lists each member's `live_handle`, `worktree_id`, role, and
+  `paused_at`.
 - Address mail by role or name: `--to @role:<role>` or `--to @member:<slug>`.
   Only members with an active Dispatch receive group mail; reach an idle member
   with a dispatch.

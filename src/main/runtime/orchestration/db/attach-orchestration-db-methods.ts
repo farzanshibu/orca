@@ -59,6 +59,7 @@ import { attachTeamInboxStore } from './teams/team-inbox-store'
 import { attachTeamHireProposalStore } from './teams/team-hire-proposal-store'
 import { attachTeamMemberStore } from './teams/team-member-store'
 import { attachTeamStore } from './teams/team-store'
+import { attachTeamTaskMetaStore } from './teams/team-task-meta-store'
 import { attachTaskStatusTransition } from './tasks/task-status-transition'
 import { attachFederatedWorkerStartReconcile } from './worker-dispatch/federated-worker-start-reconcile'
 import { attachWorkerDispatchAbandon } from './worker-dispatch/worker-dispatch-abandon'
@@ -150,4 +151,5 @@ export function attachOrchestrationDbMethods(ctor: { prototype: object }): void 
   attachTeamBoardStore(ctor)
   attachTeamAutomationStore(ctor)
   attachTeamMemberSpendStore(ctor)
+  attachTeamTaskMetaStore(ctor)
 }

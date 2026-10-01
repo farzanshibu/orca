@@ -6,6 +6,7 @@ import { TEAM_INBOX_METHODS } from './team-inbox-methods'
 import { TEAM_MEMBER_METHODS } from './team-member-methods'
 import { TEAM_METHODS } from './team-methods'
 import { TEAM_QUEUE_METHODS } from './team-queue-methods'
+import { TEAM_TASK_METHODS } from './team-task-methods'
 
 export const ORCHESTRATION_TEAM_METHODS = [
   ...TEAM_METHODS,
@@ -15,5 +16,6 @@ export const ORCHESTRATION_TEAM_METHODS = [
   ...TEAM_QUEUE_METHODS,
   ...TEAM_CAPABILITY_METHODS,
   ...TEAM_AUTOMATION_METHODS,
-  ...TEAM_MEMORY_METHODS
+  ...TEAM_MEMORY_METHODS,
+  ...TEAM_TASK_METHODS
 ]

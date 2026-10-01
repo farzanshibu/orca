@@ -54,7 +54,11 @@ const VERSIONED_POST_V6_COLUMNS = [
   { version: 43, table: 'team_member_sessions', column: 'session_id' },
   { version: 43, table: 'team_member_queue', column: 'position' },
   { version: 43, table: 'team_task_refs', column: 'number' },
-  { version: 43, table: 'team_missions', column: 'schedule' }
+  { version: 43, table: 'team_missions', column: 'schedule' },
+  { version: 44, table: 'teams', column: 'activity_pruned_through' },
+  { version: 44, table: 'team_task_refs', column: 'assignee_member_id' },
+  { version: 44, table: 'team_member_queue', column: 'source' },
+  { version: 44, table: 'team_activity', column: 'sequence' }
 ] as const
 
 // Why: v34 shipped without these two, so a v34 stamp proves nothing about them; v35 repairs both

@@ -24,6 +24,8 @@ export const TeamRowSchema = z.object({
   webhook_token: z.string().nullable(),
   auto_compact_tokens: z.number().nullable(),
   closing_at: z.string().nullable(),
+  max_parallel: z.number().nullable(),
+  activity_pruned_through: z.number(),
   status: z.enum(TEAM_STATUSES),
   created_at: z.string(),
   updated_at: z.string()

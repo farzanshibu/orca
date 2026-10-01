@@ -170,6 +170,7 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
       'team note read',
       'team note write',
       'team task add',
+      'team task assign',
       'team closing-time'
     ],
     load: async () => (await import('./handlers/team.js')).TEAM_HANDLERS

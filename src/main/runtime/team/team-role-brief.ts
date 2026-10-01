@@ -48,8 +48,9 @@ export function buildTeamMemberBrief(args: {
           'You coordinate this team. Load the orchestration guide first:',
           `  ${cli} skills get orchestration`,
           `Bind yourself to the team's Run before anything else: \`${cli} orchestration run-use --id ${team.run_id}\``,
-          `Dispatch work to an idle member's terminal with \`${cli} orchestration worker-start --task <id> --terminal <handle>\`.`,
-          `See every member's terminal with \`${cli} team show --team ${team.id} --json\`.`,
+          `Assign each task to a member: \`${cli} team task assign --team ${team.id} --task <ref> --member <slug>\`.`,
+          "Orca starts it in that member's own terminal and worktree once the task is ready and the member is free.",
+          `See every member and task with \`${cli} team show --team ${team.id} --json\`.`,
           `When the team needs another member, propose one; the human approves it:`,
           `  ${cli} team hire-propose --team ${team.id} --slug <slug> --role <role> --agent <agent> --rationale <why>`,
           'Put questions for the human in a decision gate or an ask; never guess on irreversible choices.'

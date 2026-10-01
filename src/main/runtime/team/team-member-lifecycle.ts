@@ -5,7 +5,7 @@ import type { OrchestrationDb } from '../orchestration/db'
 import { OrchestrationError } from '../orchestration/orchestration-error'
 import type { TeamMemberRow, TeamRow } from '../orchestration/team-types'
 import type { RpcContext } from '../rpc/core'
-import { runLegacyAgentLaunch } from '../rpc/methods/agent-launch'
+import { deliverTerminalAgentLaunchPrompt } from '../rpc/methods/agent-launch-terminal-prompt'
 import { resolveWorkerLaunchPreferences } from '../rpc/methods/orchestration/worker/worker-launch-preferences'
 import { buildTeamMemberBrief } from './team-role-brief'
 import { teamNotesRoot } from './team-notes'
@@ -53,8 +53,9 @@ export async function startTeamMember(args: {
     return db.setTeamMemberDesiredState(member.id, 'running')
   }
   assertTeamMemberLaunchable(member)
-  if (!isTuiAgent(member.agent)) {
-    throw new OrchestrationError('invalid_argument', `Unknown agent "${member.agent}".`)
+  const agent = member.agent
+  if (!isTuiAgent(agent)) {
+    throw new OrchestrationError('invalid_argument', `Unknown agent "${agent}".`)
   }
   const repo = await context.runtime.showRepo(`id:${team.repo_id}`)
   const cli = resolveTerminalOrchestrationCliCommand({
@@ -78,33 +79,34 @@ export async function startTeamMember(args: {
     cli,
     notesRoot: teamNotesRoot(repo, team)
   })
-  const result = await runLegacyAgentLaunch(
-    {
-      agent: member.agent,
-      target: { kind: 'existing', worktree: `id:${workspace.worktreeId}` },
-      prompt: { text: brief, delivery: 'submit' },
-      ...(member.model
-        ? {
-            sessionOptions: {
-              model: member.model,
-              ...(member.effort ? { effort: member.effort } : {})
-            }
-          }
-        : {}),
-      launchSource: 'orchestration'
-    },
-    context
-  )
-  const paneKey = result.outcome.kind === 'terminal' ? (result.outcome.paneKey ?? null) : null
+  const launch = resolveWorkerLaunchPreferences({
+    agent,
+    model: member.model ?? undefined,
+    effort: member.effort ?? undefined
+  })
+  // Why a terminal, not agent.launch: that may open a structured session, which has no pane for
+  // dispatches, the queue, or the manager's Run binding to reach.
+  const terminal = await context.runtime.createTerminal(`id:${workspace.worktreeId}`, {
+    startupAgent: agent,
+    ...(launch.preferences ? { launchPreferences: launch.preferences } : {}),
+    title: member.display_name,
+    surfaceOwner: false
+  })
+  const paneKey = terminal.paneKey ?? context.runtime.getTerminalPaneKey(terminal.handle)
   db.bindTeamMemberTerminal(member.id, {
-    worktreeId: result.worktreeId,
-    terminalHandle: result.outcome.handle,
+    worktreeId: workspace.worktreeId,
+    terminalHandle: terminal.handle,
     paneKey,
-    orcaSessionId: result.outcome.kind === 'structured' ? result.outcome.sessionId : null
+    orcaSessionId: null
   })
   if (member.is_manager === 1 && paneKey) {
-    bindTeamManagerRun(context, db, team, result.outcome.handle, paneKey)
+    bindTeamManagerRun(context.runtime, db, team, terminal.handle, paneKey)
   }
+  await deliverTerminalAgentLaunchPrompt({
+    runtime: context.runtime,
+    handle: terminal.handle,
+    text: brief
+  })
   return db.setTeamMemberDesiredState(member.id, 'running')
 }
 
@@ -112,8 +114,8 @@ export async function startTeamMember(args: {
  * Makes the manager the team Run's coordinator, as `run-use` would, so its dispatches, asks, and
  * worker_done mail land in the team Run without the agent having to bind itself first.
  */
-function bindTeamManagerRun(
-  context: RpcContext,
+export function bindTeamManagerRun(
+  runtime: RpcContext['runtime'],
   db: OrchestrationDb,
   team: TeamRow,
   handle: string,
@@ -127,7 +129,7 @@ function bindTeamManagerRun(
   if (!run) {
     throw new OrchestrationError('run_not_found', `Team Run ${team.run_id} is missing.`)
   }
-  context.runtime.cancelMessageWaiters(`run:${team.run_id}`)
+  runtime.cancelMessageWaiters(`run:${team.run_id}`)
 }
 
 export async function stopTeamMember(args: {

@@ -17,6 +17,10 @@ CREATE TABLE IF NOT EXISTS teams (
   auto_compact_tokens INTEGER,
   -- Set while Closing Time is winding the team down; cleared once every member has stopped.
   closing_at  TEXT,
+  -- Most members the scheduler dispatches to at once; null means one task per member, no team cap.
+  max_parallel INTEGER,
+  -- Activity at or below this sequence was pruned, so an older poll cursor must restart.
+  activity_pruned_through INTEGER NOT NULL DEFAULT 0,
   status      TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'paused', 'archived')),
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
@@ -82,6 +86,13 @@ CREATE TABLE IF NOT EXISTS team_task_refs (
   task_id   TEXT PRIMARY KEY,
   team_id   TEXT NOT NULL,
   number    INTEGER NOT NULL,
+  -- A goal is a parent the manager splits into tasks; it is never dispatched itself.
+  kind      TEXT NOT NULL DEFAULT 'task' CHECK(kind IN ('task', 'goal')),
+  -- Who works it: Orca dispatches once the task is ready and this member is free.
+  assignee_member_id  TEXT,
+  assigned_at         TEXT,
+  -- Set once the manager was asked to review a goal whose tasks all finished.
+  review_requested_at TEXT,
   UNIQUE (team_id, number)
 );
 
@@ -91,6 +102,8 @@ CREATE TABLE IF NOT EXISTS team_member_queue (
   member_id     TEXT NOT NULL,
   text          TEXT NOT NULL,
   position      REAL NOT NULL,
+  -- What queued it: operator, mission, webhook, enrich, goal, closing, or compact.
+  source        TEXT NOT NULL DEFAULT 'operator',
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   delivered_at  TEXT,
   failed_reason TEXT
@@ -134,4 +147,28 @@ CREATE TABLE IF NOT EXISTS team_hire_proposals (
 );
 CREATE INDEX IF NOT EXISTS idx_team_hire_proposals_team_status
   ON team_hire_proposals(team_id, status);
+
+-- Everything a team does, in one order: mail, deliveries, dispatches, and goals. Readers poll it
+-- by sequence, so one cursor covers every kind. Members are resolved when the row is written,
+-- because their handles change on every restart.
+CREATE TABLE IF NOT EXISTS team_activity (
+  sequence        INTEGER PRIMARY KEY AUTOINCREMENT,
+  team_id         TEXT NOT NULL,
+  kind            TEXT NOT NULL,
+  channel         TEXT,
+  status          TEXT,
+  message_id      TEXT,
+  message_type    TEXT,
+  task_id         TEXT,
+  dispatch_id     TEXT,
+  thread_id       TEXT,
+  from_party      TEXT NOT NULL,
+  from_member_id  TEXT,
+  to_party        TEXT NOT NULL,
+  to_member_id    TEXT,
+  subject         TEXT NOT NULL DEFAULT '',
+  detail          TEXT,
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_team_activity_team_sequence ON team_activity(team_id, sequence);
 `

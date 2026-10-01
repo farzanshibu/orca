@@ -34,24 +34,51 @@ export async function projectTeamMember(
   }
 }
 
+/** The task the member's terminal holds an active Dispatch for, which outlives a reminted handle. */
+function currentTeamTask(
+  db: OrchestrationDb,
+  member: TeamMemberView,
+  refs: ReadonlyMap<string, string>
+): { task_id: string; ref: string | null; dispatch_id: string } | null {
+  const handle = member.live_handle ?? member.terminal_handle
+  const dispatch = handle
+    ? db.getActiveDispatchForIdentity(handle, member.pane_key ?? undefined)
+    : undefined
+  return dispatch
+    ? {
+        task_id: dispatch.task_id,
+        ref: refs.get(dispatch.task_id) ?? null,
+        dispatch_id: dispatch.id
+      }
+    : null
+}
+
 export async function buildTeamSnapshot(
   runtime: RpcContext['runtime'],
   db: OrchestrationDb,
   team: TeamRow
 ) {
-  const members = await Promise.all(
-    db.listTeamMembers(team.id).map(async (member) => ({
-      ...(await projectTeamMember(runtime, member)),
-      queue: db.listPendingTeamQueue(member.id)
-    }))
-  )
   const refs = db.assignTeamTaskRefs(team.id)
+  const meta = new Map(db.listTeamTaskMeta(team.id).map((row) => [row.task_id, row]))
+  const members = await Promise.all(
+    db.listTeamMembers(team.id).map(async (member) => {
+      const view = await projectTeamMember(runtime, member)
+      return {
+        ...view,
+        current_task: currentTeamTask(db, view, refs),
+        queue: db.listPendingTeamQueue(member.id)
+      }
+    })
+  )
   return {
     team: publicTeam(team),
     members,
-    tasks: db
-      .listTasksWithDispatch({ runId: team.run_id })
-      .map((task) => ({ ...task, ref: refs.get(task.id) ?? null })),
+    tasks: db.listTasksWithDispatch({ runId: team.run_id }).map((task) => ({
+      ...task,
+      ref: refs.get(task.id) ?? null,
+      kind: meta.get(task.id)?.kind ?? 'task',
+      assignee_member_id: meta.get(task.id)?.assignee_member_id ?? null
+    })),
     pendingQuestions: db.listPendingTeamQuestions(team.run_id),
     pendingGates: db.listGates({ status: 'pending' }).filter((gate) => gate.run_id === team.run_id),
     pendingHires: db.listTeamHireProposals(team.id, 'pending')

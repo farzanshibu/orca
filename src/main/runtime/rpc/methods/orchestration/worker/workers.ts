@@ -1,18 +1,8 @@
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { defineMethod } from '../../../core'
-import { startFederatedWorker } from '../federation/federated-worker-start'
-import { startLocalWorker } from './local-worker-start'
-import {
-  decideWorkerStartMode,
-  readWorkerStartModeSettings
-} from '../../orchestration-worker-start-mode'
 import { resolveOrchestrationCaller } from '../runs/run-scope'
 import { WorkerStartParams } from './worker-start-schema'
-import {
-  isWorkerStartTimeoutWithinTimerLimit,
-  resolveWorkerStartReadinessTimeoutMs
-} from '../../../../../../shared/orchestration-timing-budgets'
-import { assertWorkerStartTaskSpecWithinPromptBudget } from './worker-start-prompt-budget'
+import { assertWorkerStartTimeout, startWorkerForRun } from './worker-start-for-run'
 
 export const ORCHESTRATION_WORKER_START_METHODS = [
   defineMethod({
@@ -22,13 +12,7 @@ export const ORCHESTRATION_WORKER_START_METHODS = [
       params,
       { runtime, orchestrationMutation, orchestrationCompatibilityEvidence, orchestrationCaller }
     ) => {
-      if (!isWorkerStartTimeoutWithinTimerLimit(params.timeoutMs)) {
-        throw new OrchestrationError(
-          'invalid_argument',
-          '--timeout-ms is too large for worker-start transport grace; the derived timeout must fit within the timer limit.'
-        )
-      }
-      const readinessTimeoutMs = resolveWorkerStartReadinessTimeoutMs(params.timeoutMs)
+      assertWorkerStartTimeout(params)
       const db = runtime.getOrchestrationDb()
       const coordinator = resolveOrchestrationCaller(runtime, {
         callerTerminalHandle: params.from,
@@ -49,35 +33,15 @@ export const ORCHESTRATION_WORKER_START_METHODS = [
           `Task ${params.task} was not found in Run ${run.id}.`
         )
       }
-      await assertWorkerStartTaskSpecWithinPromptBudget(params.spec ?? existingTask!.spec)
-      const mode = decideWorkerStartMode({
+      return startWorkerForRun({
         params,
-        settings: readWorkerStartModeSettings(runtime)
-      })
-      if (params.on) {
-        // A remote worker is always a terminal agent; the mode receipt rides along so the
-        // coordinator still learns why its structured default did not apply.
-        const receipt = await startFederatedWorker({
-          params,
-          runtime,
-          db,
-          runId: run.id,
-          task: existingTask,
-          orchestrationMutation,
-          callerSession: orchestrationCaller
-        })
-        return receipt && typeof receipt === 'object' ? { ...receipt, mode } : receipt
-      }
-      return startLocalWorker({
-        params: { ...params, timeoutMs: readinessTimeoutMs },
         runtime,
         db,
         run,
         coordinator,
         callerSession: orchestrationCaller,
         existingTask,
-        orchestrationMutation,
-        mode
+        orchestrationMutation
       })
     }
   })

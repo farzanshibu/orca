@@ -58,6 +58,7 @@ import type { TeamInboxStoreMethods } from './teams/team-inbox-store'
 import type { TeamHireProposalStoreMethods } from './teams/team-hire-proposal-store'
 import type { TeamMemberStoreMethods } from './teams/team-member-store'
 import type { TeamStoreMethods } from './teams/team-store'
+import type { TeamTaskMetaStoreMethods } from './teams/team-task-meta-store'
 import type { TaskStatusTransitionMethods } from './tasks/task-status-transition'
 import type { FederatedWorkerStartReconcileMethods } from './worker-dispatch/federated-worker-start-reconcile'
 import type { WorkerDispatchAbandonMethods } from './worker-dispatch/worker-dispatch-abandon'
@@ -148,4 +149,5 @@ export type OrchestrationDbMethods = AttemptObservationStoreMethods &
   TeamInboxStoreMethods &
   TeamBoardStoreMethods &
   TeamAutomationStoreMethods &
-  TeamMemberSpendStoreMethods
+  TeamMemberSpendStoreMethods &
+  TeamTaskMetaStoreMethods

@@ -173,8 +173,57 @@ describe('team schema migration', () => {
     const reopened = new OrchestrationDb(path)
     try {
       expect(reopened.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
-      expect(SCHEMA_VERSION).toBe(43)
+      expect(SCHEMA_VERSION).toBe(44)
       expect(reopened.createTeam({ repoId: 'repo_1', name: 'Platform' }).status).toBe('active')
+    } finally {
+      reopened.close()
+    }
+  })
+
+  it('adds assignment, queue sources, and the activity feed to a v43 database', () => {
+    const path = join(dir, 'orchestration.db')
+    const seeded = new OrchestrationDb(path)
+    // A v43 database has no activity triggers either; they would name the dropped table.
+    seeded.db.exec(`
+      DROP TRIGGER IF EXISTS trg_team_activity_message_insert;
+      DROP TRIGGER IF EXISTS trg_team_activity_message_read;
+      DROP TRIGGER IF EXISTS trg_team_activity_task_insert;
+      DROP TRIGGER IF EXISTS trg_team_activity_task_status;
+      DROP TRIGGER IF EXISTS trg_team_activity_dispatch_status;
+      DROP TABLE team_activity;
+      DROP INDEX idx_team_task_refs_assignee;
+      DROP TABLE team_task_refs;
+      CREATE TABLE team_task_refs (
+        task_id TEXT PRIMARY KEY, team_id TEXT NOT NULL, number INTEGER NOT NULL,
+        UNIQUE (team_id, number)
+      );
+      ALTER TABLE teams DROP COLUMN max_parallel;
+      ALTER TABLE teams DROP COLUMN activity_pruned_through;
+      ALTER TABLE team_member_queue DROP COLUMN source;
+    `)
+    seeded.db.pragma('user_version = 43')
+    seeded.close()
+
+    const reopened = new OrchestrationDb(path)
+    try {
+      expect(reopened.db.pragma('user_version', { simple: true })).toBe(44)
+      for (const [table, column] of [
+        ['teams', 'activity_pruned_through'],
+        ['team_task_refs', 'assignee_member_id'],
+        ['team_member_queue', 'source'],
+        ['team_activity', 'sequence']
+      ] as const) {
+        expect(reopened.hasColumn(table, column)).toBe(true)
+      }
+      const team = reopened.createTeam({ repoId: 'repo_1', name: 'Platform' })
+      const member = reopened.addTeamMember(team.id, {
+        slug: 'jim',
+        roleSlug: 'engineer',
+        agent: 'codex'
+      })
+      const task = reopened.createTask({ runId: team.run_id, spec: 'Ship it' })
+      const meta = reopened.assignTeamTask(team.id, task.id, member.id)
+      expect(meta).toMatchObject({ kind: 'task', assignee_member_id: member.id, number: 1 })
     } finally {
       reopened.close()
     }

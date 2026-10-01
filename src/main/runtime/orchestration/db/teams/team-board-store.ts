@@ -63,6 +63,8 @@ export function assignTeamTaskRefs(this: OrchestrationDb, teamId: string): Map<s
 
 /** Resolves `bmt-12` (or a raw task id) to the task id within the team. */
 export function resolveTeamTaskRef(this: OrchestrationDb, teamId: string, ref: string): string {
+  // Number first: a task filed since the last read has no ref row yet.
+  this.assignTeamTaskRefs(teamId)
   const team = this.requireTeam(teamId)
   const match = new RegExp(`^${team.task_prefix}-(\\d+)$`, 'i').exec(ref.trim())
   const row = match

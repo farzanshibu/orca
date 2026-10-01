@@ -50,21 +50,5 @@ export const TEAM_MEMORY_HANDLERS: Record<string, CommandHandler> = {
       content
     })
     printResult(result, json, (value) => `Wrote ${value.path}`)
-  },
-
-  'team task add': async ({ flags, client, json }) => {
-    const result = await client.call<{
-      enriched: boolean
-      taskId: string | null
-      ref?: string | null
-    }>('orchestration.teamTaskCreate', {
-      ...teamParams(flags),
-      title: getRequiredStringFlag(flags, 'title'),
-      spec: getOptionalStringFlag(flags, 'spec'),
-      enrich: flags.has('enrich') ? true : undefined
-    })
-    printResult(result, json, (value) =>
-      value.enriched ? 'Sent to the manager to write up.' : `Filed ${value.ref ?? value.taskId}`
-    )
   }
 }
