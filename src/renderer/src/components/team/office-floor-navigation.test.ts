@@ -23,14 +23,16 @@ function legs(route: FloorRoute): FloorSegment[] {
   return route.points.slice(1).map((to, index) => ({ from: route.points[index], to }))
 }
 
-/** What a walking character must not pass through: desk tops and the big furniture. */
+/** What a walking character must not pass through: desks, the big furniture, and the staging area. */
 function furniture(plan: OfficeFloorPlan): FloorRect[] {
   const desks = [plan.managerDesk, ...plan.pods.flatMap((pod) => pod.desks)]
   return [
-    ...desks.map(({ cell }) => ({ x: cell.x, y: cell.y, w: cell.w, h: 30 })),
+    ...desks.map(({ top }) => top),
     plan.fixtures.conferenceTable,
     plan.fixtures.kitchenCounter,
-    plan.fixtures.receptionDesk
+    plan.fixtures.receptionDesk,
+    plan.fixtures.shelf,
+    plan.fixtures.staging
   ]
 }
 

@@ -1,28 +1,63 @@
 import React from 'react'
-import { ChairBack } from './office-floor-desk-art'
-import type { FloorDesk } from './office-floor-plan'
-import { FIGURE, FigureBack, type Look } from './office-floor-sprite'
+import { ChairBack, type ScreenState } from './office-floor-desk-art'
+import type { FloorDesk, FloorFacing, FloorPoint } from './office-floor-plan'
+import { DeskForeground } from './office-floor-pods'
+import {
+  FIGURE,
+  FigureBack,
+  FigureSeatedFront,
+  SEATED_FRONT_H,
+  type Look
+} from './office-floor-sprite'
 
 /**
- * A member at their desk, seen from behind, with the chair back in front of them. Purely visual:
- * the desk's click target sits underneath and owns the pointer.
+ * Someone sitting at `at`, a seat anchor's point. Facing the viewer they are behind the furniture,
+ * cut off at its edge; facing away they are in front of it, with their chair's back over them.
+ */
+export function SeatedFigure({
+  at,
+  facing,
+  look
+}: {
+  at: FloorPoint
+  facing: FloorFacing
+  look: Look
+}): React.JSX.Element {
+  const x = at.x - FIGURE.w / 2
+  if (facing === 'viewer') {
+    return (
+      <g transform={`translate(${x} ${at.y - SEATED_FRONT_H})`}>
+        <FigureSeatedFront look={look} />
+      </g>
+    )
+  }
+  return (
+    <g>
+      <g transform={`translate(${x} ${at.y - FIGURE.h})`}>
+        <FigureBack look={look} />
+      </g>
+      <ChairBack at={at} />
+    </g>
+  )
+}
+
+/**
+ * A member at their desk, with whatever on the desk stands between them and the viewer drawn over
+ * them. Purely visual: the desk's click target sits underneath and owns the pointer.
  */
 export function SeatedCharacter({
   desk,
-  look
+  look,
+  screen
 }: {
   desk: FloorDesk
   look: Look
+  screen: ScreenState
 }): React.JSX.Element {
-  const { seat, cell } = desk
-  const x = seat.x - FIGURE.w / 2
-  const y = seat.y - FIGURE.h
   return (
     <g>
-      <g transform={`translate(${x} ${y})`}>
-        <FigureBack look={look} />
-      </g>
-      <ChairBack x={cell.x} y={cell.y} />
+      <SeatedFigure at={desk.seat} facing={desk.facing} look={look} />
+      <DeskForeground desk={desk} state={screen} />
     </g>
   )
 }

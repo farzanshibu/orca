@@ -1,14 +1,11 @@
 import type { FloorRect } from './office-floor-geometry'
 import {
-  AISLE,
   BACK_WALL,
-  DESK_CELL,
-  DESK_LANE_OFFSET,
-  POD,
   WALL,
   type FloorDesk,
   type FloorFixtures,
   type FloorPod,
+  type FloorPodSlot,
   type FloorRoomId,
   type FloorVariant,
   type OfficeFloorPlan
@@ -18,27 +15,9 @@ import { addWall, type PlanDraft } from './office-floor-plan-rooms'
 /** Measurements and assembly shared by the side-by-side and the stacked arrangement. */
 
 export const BACK_ROOM_H = 72
-export const WAREHOUSE_H = 48
-// The strip of bullpen above the first pod row that the hall lane runs along.
-export const HALL_H = 16
-export const HALL_LANE_INSET = 10
-// Bare floor between a pod and the wall above or below it.
-export const POD_MARGIN = 4
-export const POD_ROW_PITCH = POD.h + AISLE
-export const POD_COLUMN_PITCH = POD.w + AISLE
-
-export function podRows(podCount: number, columns: number): number {
-  return Math.max(1, Math.ceil(podCount / columns))
-}
-
-export function podRowsHeight(rows: number): number {
-  return rows * POD_ROW_PITCH - AISLE
-}
-
-/** The lane behind the last desk row; aisles that lead nowhere further stop here. */
-export function lowestDeskLaneY(podsTop: number, rows: number): number {
-  return podsTop + (rows - 1) * POD_ROW_PITCH + POD.h - DESK_CELL.h + DESK_LANE_OFFSET
-}
+export const WAREHOUSE_H = 56
+// Bare floor under the last pod row: its lane, and room for the names under the chairs.
+export const POD_FOOT = 12
 
 export function room(draft: PlanDraft, id: FloorRoomId, rect: FloorRect): FloorRect {
   draft.rooms.push({ id, rect })
@@ -51,6 +30,7 @@ type PlanFrame = {
   height: number
   podColumns: number
   pods: FloorPod[]
+  vacantSlots: FloorPodSlot[]
   managerDesk: FloorDesk
   fixtures: FloorFixtures
 }

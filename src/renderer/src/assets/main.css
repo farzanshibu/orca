@@ -279,10 +279,12 @@
   --office-plant: var(--color-emerald-500);
   --office-paper: var(--color-zinc-200);
   --office-cardboard: color-mix(in oklab, var(--color-amber-600) 55%, var(--color-zinc-400));
+  --office-marking: var(--color-amber-400);
   /* Surfaces that carry HTML text: mixed from --card so --foreground stays legible on them. */
   --office-whiteboard: var(--card);
   --office-sign: var(--card);
   --office-screen: var(--color-sky-600);
+  --office-glow: var(--color-zinc-50);
   --office-alert: var(--agent-question);
 }
 
@@ -419,11 +421,14 @@
   --office-upholstery: color-mix(in oklab, var(--color-blue-800) 50%, var(--color-zinc-700));
   --office-accent: var(--color-rose-600);
   --office-plant: var(--color-emerald-600);
-  --office-paper: var(--color-zinc-300);
+  /* Unlit paper and enamel are grey at night; only --office-glow stays bright. */
+  --office-paper: color-mix(in oklab, var(--color-zinc-400) 45%, var(--color-zinc-600));
   --office-cardboard: color-mix(in oklab, var(--color-amber-700) 50%, var(--color-zinc-700));
+  --office-marking: color-mix(in oklab, var(--color-amber-500) 65%, var(--color-zinc-700));
   --office-whiteboard: color-mix(in oklab, var(--card) 78%, var(--color-zinc-500));
   --office-sign: var(--card);
   --office-screen: var(--color-sky-500);
+  --office-glow: var(--color-zinc-100);
   --office-alert: var(--agent-question);
 }
 
@@ -3228,16 +3233,24 @@ html.native-shell .app-layout {
   --tof-shadow: var(--office-shadow);
   --tof-floor: var(--office-carpet);
   --tof-floor-line: color-mix(in oklab, var(--office-carpet) 88%, var(--office-ink));
+  --tof-floor-meeting: color-mix(in oklab, var(--office-carpet) 84%, var(--office-upholstery));
+  --tof-floor-meeting-line: color-mix(in oklab, var(--tof-floor-meeting) 88%, var(--office-ink));
+  --tof-boards: color-mix(in oklab, var(--office-wood) 42%, var(--office-floor));
+  --tof-boards-line: color-mix(in oklab, var(--tof-boards) 90%, var(--office-ink));
+  --tof-lobby: color-mix(in oklab, var(--office-floor) 50%, var(--office-wall));
+  --tof-lobby-line: color-mix(in oklab, var(--tof-lobby) 86%, var(--office-ink));
   --tof-tile: var(--office-floor);
   --tof-tile-alt: color-mix(in oklab, var(--office-floor) 90%, var(--office-wood));
   --tof-concrete: color-mix(in oklab, var(--office-metal) 45%, var(--office-wall));
   --tof-concrete-line: color-mix(in oklab, var(--tof-concrete) 85%, var(--office-ink));
+  --tof-marking: var(--office-marking);
   --tof-wall-top: var(--office-wall);
   --tof-wall-face: var(--office-wall-face);
   --tof-wall-trim: color-mix(in oklab, var(--office-wall) 45%, var(--office-ink));
   --tof-sky: var(--office-window);
   --tof-sky-glint: color-mix(in oklab, var(--office-window) 60%, var(--office-paper));
   --tof-glass: var(--office-glass);
+  --tof-glass-pane: color-mix(in oklab, var(--office-window) 55%, var(--office-wall));
   --tof-wood: var(--office-wood);
   --tof-wood-light: color-mix(in oklab, var(--office-wood) 70%, var(--office-paper));
   --tof-wood-dark: color-mix(in oklab, var(--office-wood) 70%, var(--office-ink));
@@ -3269,7 +3282,7 @@ html.native-shell .app-layout {
   --tof-marker-green: var(--office-plant);
   --tof-screen-off: color-mix(in oklab, var(--office-ink) 80%, var(--office-metal));
   --tof-screen-work: var(--office-screen);
-  --tof-screen-line: color-mix(in oklab, var(--office-screen) 25%, var(--office-paper));
+  --tof-screen-line: color-mix(in oklab, var(--office-screen) 25%, var(--office-glow));
   --tof-screen-wait: var(--office-alert);
   --tof-screen-idle: color-mix(in oklab, var(--office-screen) 40%, var(--office-upholstery));
   /* Why: these identify a person; changing them with the theme would turn a member into someone else. */

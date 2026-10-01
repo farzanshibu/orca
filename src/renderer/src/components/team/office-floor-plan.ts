@@ -16,8 +16,11 @@ import type {
 export type { FloorPoint, FloorRect, FloorSegment } from './office-floor-geometry'
 export {
   BACK_WALL,
-  DESK_CELL,
+  DESK_W,
+  POD,
+  POD_BLOCK,
   POD_SEATS,
+  SEAT_DROP,
   WALL,
   conferenceAnchorId,
   kitchenAnchorId,
@@ -28,8 +31,10 @@ export type {
   FloorAnchorId,
   FloorDesk,
   FloorDoor,
+  FloorFacing,
   FloorFixtures,
   FloorPod,
+  FloorPodSlot,
   FloorRoom,
   FloorRoomId,
   FloorVariant,

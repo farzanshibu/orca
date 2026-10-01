@@ -4,12 +4,17 @@ import {
   rectContainsPoint,
   rectContainsRect,
   rectsOverlap,
+  segmentCrossesRect,
   type FloorRect
 } from './office-floor-geometry'
 import {
+  BACK_WALL,
   FLOOR_NARROW_BELOW,
   FLOOR_VARIANT_HYSTERESIS,
   FLOOR_WIDE_ABOVE,
+  POD_SEATS,
+  SEAT_DROP,
+  floorAnchor,
   floorRoom,
   floorVariant,
   officeFloorPlan,
@@ -95,6 +100,71 @@ describe('office floor plan', () => {
     })
   })
 
+  it('seats a pod as two rows that face each other across one desk block', () => {
+    eachPlan((plan, label) => {
+      for (const pod of plan.pods) {
+        const [backLeft, backRight, frontLeft, frontRight] = pod.desks
+        expect(pod.desks, label).toHaveLength(POD_SEATS)
+        expect(
+          pod.desks.map((desk) => desk.facing),
+          label
+        ).toEqual(['viewer', 'viewer', 'away', 'away'])
+        expect([frontLeft.seat.x, frontRight.seat.x], label).toEqual([
+          backLeft.seat.x,
+          backRight.seat.x
+        ])
+        // The two rows' desks meet with no floor between them: that is the shared block.
+        expect(frontLeft.top.y, label).toBe(backLeft.top.y + backLeft.top.h)
+        expect(backRight.top.x, label).toBe(backLeft.top.x + backLeft.top.w)
+      }
+    })
+  })
+
+  it('puts every desk in its cell, with the seat against it on the side it faces from', () => {
+    eachPlan((plan, label) => {
+      for (const desk of [plan.managerDesk, ...plan.pods.flatMap((pod) => pod.desks)]) {
+        const name = `${label}: ${desk.anchor}`
+        expect(rectContainsRect(desk.cell, desk.top), name).toBe(true)
+        expect(rectContainsPoint(desk.cell, desk.seat), name).toBe(true)
+        expect(desk.seat.x, name).toBe(desk.top.x + desk.top.w / 2)
+        if (desk.facing === 'viewer') {
+          expect(desk.seat.y, name).toBe(desk.top.y)
+          // Clear of the desk: over the occupant's head, or under the desk's front.
+          expect(
+            desk.nameplate.above
+              ? desk.nameplate.at.y < desk.seat.y
+              : desk.nameplate.at.y >= desk.top.y + desk.top.h,
+            name
+          ).toBe(true)
+        } else {
+          expect(desk.seat.y, name).toBe(desk.top.y + desk.top.h + SEAT_DROP)
+          expect(desk.nameplate.above, name).toBe(false)
+          expect(desk.nameplate.at.y, name).toBeGreaterThan(desk.seat.y)
+        }
+        const anchor = floorAnchor(plan, desk.anchor)
+        expect(anchor?.point, name).toEqual(desk.seat)
+        expect(anchor?.facing, name).toBe(desk.facing)
+      }
+    })
+  })
+
+  it('reserves the slots no pod has taken, where the next pods will go', () => {
+    eachPlan((plan, label) => {
+      const rows = Math.ceil(plan.pods.length / plan.podColumns)
+      expect(plan.vacantSlots, label).toHaveLength(rows * plan.podColumns - plan.pods.length)
+      const next = officeFloorPlan(plan.variant, plan.pods.length + plan.vacantSlots.length)
+      expect(
+        plan.vacantSlots.map(({ room, rect }) => ({ room, rect })),
+        label
+      ).toEqual(next.pods.slice(plan.pods.length).map(({ room, rect }) => ({ room, rect })))
+      for (const slot of plan.vacantSlots) {
+        for (const aisle of plan.aisles) {
+          expect(segmentCrossesRect(aisle, slot.rect), label).toBe(false)
+        }
+      }
+    })
+  })
+
   it('never moves an existing pod when pods are added, and only grows downward', () => {
     for (const variant of VARIANTS) {
       for (const pods of POD_COUNTS) {
@@ -165,6 +235,43 @@ describe('office floor plan', () => {
         expect(rectContainsRect(floor, rect), `${label}: ${name}`).toBe(true)
         expect(rect.w > 0 && rect.h > 0, `${label}: ${name}`).toBe(true)
       }
+    })
+  })
+
+  it('keeps the staging area in the warehouse, off its lane and clear of the racks and doors', () => {
+    eachPlan((plan, label) => {
+      const warehouse = floorRoom(plan, 'warehouse')
+      const { staging, shelf, dock } = plan.fixtures
+      expect(warehouse && rectContainsRect(warehouse.rect, staging), label).toBe(true)
+      expect(warehouse && rectContainsRect(warehouse.rect, shelf), label).toBe(true)
+      expect(rectsOverlap(staging, shelf), label).toBe(false)
+      // Wide enough for a row of boxes, and not in front of the dock door.
+      expect(staging.w, label).toBeGreaterThanOrEqual(72)
+      expect(staging.x + staging.w, label).toBeLessThanOrEqual(dock.x)
+      for (const aisle of plan.aisles) {
+        expect(segmentCrossesRect(aisle, staging), label).toBe(false)
+        expect(segmentCrossesRect(aisle, shelf), label).toBe(false)
+      }
+      for (const door of warehouse?.doors ?? []) {
+        expect(rectsOverlap(grown(door.rect, 2), shelf), `${label}: ${door.id}`).toBe(false)
+      }
+    })
+  })
+
+  it('puts the sign and the note tray on the reception desk, and the whiteboard on the back wall', () => {
+    eachPlan((plan, label) => {
+      const { receptionDesk, sign, noteTray, whiteboard } = plan.fixtures
+      expect(rectContainsRect(receptionDesk, sign), label).toBe(true)
+      expect(rectContainsRect(receptionDesk, noteTray), label).toBe(true)
+      expect(rectsOverlap(sign, noteTray), label).toBe(false)
+      expect(whiteboard.y + whiteboard.h, label).toBeLessThanOrEqual(BACK_WALL)
+      const conference = floorRoom(plan, 'conference')?.rect
+      expect(
+        conference &&
+          whiteboard.x >= conference.x &&
+          whiteboard.x + whiteboard.w <= conference.x + conference.w,
+        label
+      ).toBe(true)
     })
   })
 })

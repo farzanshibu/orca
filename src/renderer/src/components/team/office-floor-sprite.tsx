@@ -116,21 +116,35 @@ function FrontHair({ look }: { look: Look }): React.JSX.Element {
   }
 }
 
-function Body({ look }: { look: Look }): React.JSX.Element {
-  const { shirt, skin } = look
+function Face({ look }: { look: Look }): React.JSX.Element {
   return (
     <>
-      <Px x={1} y={10} w={12} h={9} c="ink" />
-      <Px x={2} y={11} w={10} h={7} c={shirt} />
+      <Px x={2} y={1} w={10} h={10} c="ink" />
+      <Px x={3} y={2} w={8} h={8} c={look.skin} />
+      <FrontHair look={look} />
+      <Px x={5} y={5} w={1} h={2} c="ink" />
+      <Px x={8} y={5} w={1} h={2} c="ink" />
+      <Px x={4} y={7} w={1} h={1} c="blush" />
+      <Px x={9} y={7} w={1} h={1} c="blush" />
+      <Px x={6} y={8} w={2} h={1} c="mouth" />
+    </>
+  )
+}
+
+/** Shoulders down to `rows` below the chin. The collar is a shirt paint, so it never dims with the theme. */
+function Torso({ look, rows }: { look: Look; rows: number }): React.JSX.Element {
+  const { shirt } = look
+  return (
+    <>
+      <Px x={1} y={10} w={12} h={rows} c="ink" />
+      <Px x={2} y={11} w={10} h={rows - 1} c={shirt} />
       <Px x={4} y={11} w={6} h={1} c={shirtShade(shirt)} />
       {look.tie ? (
         <>
-          <Px x={6} y={11} w={2} h={1} c="paper" />
+          <Px x={6} y={11} w={2} h={1} c="shirt-5" />
           <Px x={6} y={12} w={2} h={4} c="tie" />
         </>
       ) : null}
-      <Px x={1} y={17} w={2} h={1} c={skin} />
-      <Px x={11} y={17} w={2} h={1} c={skin} />
     </>
   )
 }
@@ -140,18 +154,36 @@ export function FigureFront({ look }: { look: Look }): React.JSX.Element {
   const { skin } = look
   return (
     <g>
-      <Px x={2} y={1} w={10} h={10} c="ink" />
-      <Px x={3} y={2} w={8} h={8} c={skin} />
-      <FrontHair look={look} />
-      <Px x={5} y={5} w={1} h={2} c="ink" />
-      <Px x={8} y={5} w={1} h={2} c="ink" />
-      <Px x={4} y={7} w={1} h={1} c="blush" />
-      <Px x={9} y={7} w={1} h={1} c="blush" />
-      <Px x={6} y={8} w={2} h={1} c="mouth" />
-      <Body look={look} />
+      <Face look={look} />
+      <Torso look={look} rows={9} />
+      <Px x={2} y={18} w={10} h={1} c="ink" />
+      <Px x={1} y={17} w={2} h={1} c={skin} />
+      <Px x={11} y={17} w={2} h={1} c={skin} />
       <Px x={3} y={18} w={8} h={4} c="ink" />
       <Px x={4} y={18} w={2} h={3} c="pants" />
       <Px x={8} y={18} w={2} h={3} c="pants" />
+    </g>
+  )
+}
+
+/** How much of a seated figure shows above the furniture in front of it. */
+export const SEATED_FRONT_H = 18
+
+/**
+ * Front view from the chest up, for someone seated behind a desk or table: the furniture's far
+ * edge is the sprite's bottom edge, and the forearms rest on it.
+ */
+export function FigureSeatedFront({ look }: { look: Look }): React.JSX.Element {
+  const { skin } = look
+  const sleeve = shirtShade(look.shirt)
+  return (
+    <g>
+      <Face look={look} />
+      <Torso look={look} rows={SEATED_FRONT_H - 10} />
+      <Px x={2} y={14} w={2} h={2} c={sleeve} />
+      <Px x={10} y={14} w={2} h={2} c={sleeve} />
+      <Px x={3} y={16} w={2} h={2} c={skin} />
+      <Px x={9} y={16} w={2} h={2} c={skin} />
     </g>
   )
 }

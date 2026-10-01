@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
 import { translate } from '@/i18n/i18n'
 import { SeatedCharacter } from './office-floor-character'
-import { ChairBack, ChairSeat, DeskTop, type ScreenState } from './office-floor-desk-art'
+import type { ScreenState } from './office-floor-desk-art'
 import {
   FloorDeskTargets,
   type DeskHirePrefill,
@@ -11,6 +11,7 @@ import {
 } from './office-floor-desk-targets'
 import { FloorOverlay, type FloorBadge, type FloorNameplate } from './office-floor-overlay'
 import { officeFloorPlan, type FloorDesk, type OfficeFloorPlan } from './office-floor-plan'
+import { DeskSetup } from './office-floor-pods'
 import { FloorRoster, floorActivityLabel, type PlacedMember } from './office-floor-roster'
 import { OfficeBackdrop } from './office-floor-scene'
 import type { FloorSeating } from './office-floor-seating'
@@ -28,8 +29,6 @@ import { useTeamClock } from './use-team-clock'
 const MAIL_WINDOW_MS = 10_000
 // Upscaling past this makes the pixel art blurry-large on wide monitors.
 const MAX_ART_SCALE = 3
-// From a desk cell's top to its nameplate, just under the chair.
-const NAMEPLATE_OFFSET = 57
 
 function FloorSummaryLine({
   placed,
@@ -199,7 +198,7 @@ export function TeamOfficeFloor({
       ? [
           {
             id: entry.member.id,
-            at: { x: desk.cell.x + desk.cell.w / 2, y: desk.cell.y + NAMEPLATE_OFFSET },
+            ...desk.nameplate,
             width: desk.cell.w,
             name: entry.member.display_name,
             status:
@@ -216,7 +215,7 @@ export function TeamOfficeFloor({
       ? [
           {
             id: entry.member.id,
-            // Beside the head: above it is the monitor.
+            // Beside the head, whichever way the desk faces.
             at: { x: desk.seat.x + 13, y: desk.seat.y - 15 },
             kind: entry.needsYou ? ('question' as const) : ('mail' as const)
           }
@@ -247,15 +246,12 @@ export function TeamOfficeFloor({
             >
               <OfficeBackdrop plan={plan} whiteboardBlank={whiteboard != null} />
               {desks.map(({ desk, entry }) => (
-                <g key={desk.anchor}>
-                  <DeskTop desk={desk} state={screenFor(entry)} />
-                  {isPresent(entry) ? null : (
-                    <>
-                      <ChairSeat x={desk.cell.x} y={desk.cell.y} />
-                      <ChairBack x={desk.cell.x} y={desk.cell.y} />
-                    </>
-                  )}
-                </g>
+                <DeskSetup
+                  key={desk.anchor}
+                  desk={desk}
+                  state={screenFor(entry)}
+                  occupied={isPresent(entry)}
+                />
               ))}
             </svg>
             <FloorDeskTargets
@@ -276,6 +272,7 @@ export function TeamOfficeFloor({
                     key={entry.member.id}
                     desk={desk}
                     look={memberLook(entry.member.slug, Boolean(entry.member.is_manager))}
+                    screen={screenFor(entry)}
                   />
                 ) : null
               )}

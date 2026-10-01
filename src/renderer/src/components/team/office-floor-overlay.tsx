@@ -7,8 +7,10 @@ import { pointPlacement, rectPlacement, widthPlacement } from './office-floor-pl
 /** A name under a desk or a character. */
 export type FloorNameplate = {
   id: string
-  /** Top centre of the label, in art units. */
+  /** Top centre of the label, in art units; its bottom centre when `above`. */
   at: FloorPoint
+  /** The label hangs over `at` and grows upward: for a name over a head, not under a chair. */
+  above?: boolean
   /** Art units the label may span before it truncates. */
   width: number
   name: string
@@ -62,16 +64,17 @@ export function FloorOverlay({
           {whiteboard}
         </div>
       )}
-      {nameplates.map(({ id, at, width, name, status, dim }) => (
+      {nameplates.map(({ id, at, above, width, name, status, dim }) => (
         <div
           key={id}
           aria-hidden="true"
           data-dim={dim ? 'true' : undefined}
+          data-above={above ? 'true' : undefined}
           style={{
             ...pointPlacement(plan, { x: at.x - width / 2, y: at.y }),
             width: widthPlacement(plan, width)
           }}
-          className="group absolute flex flex-col items-center"
+          className="group absolute flex flex-col items-center data-[above=true]:-translate-y-full"
         >
           <span className="max-w-full truncate rounded-sm bg-background/80 px-1 text-[11px] leading-[14px] font-medium text-foreground group-data-[dim=true]:text-muted-foreground">
             {name}

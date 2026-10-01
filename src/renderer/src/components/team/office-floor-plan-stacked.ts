@@ -1,20 +1,27 @@
-import { AISLE, BACK_WALL, PARTITION, WALL, type OfficeFloorPlan } from './office-floor-plan-parts'
+import {
+  AISLE,
+  BACK_WALL,
+  PARTITION,
+  POD,
+  WALL,
+  type OfficeFloorPlan
+} from './office-floor-plan-parts'
 import {
   BACK_ROOM_H,
-  HALL_LANE_INSET,
-  POD_COLUMN_PITCH,
-  POD_MARGIN,
-  POD_ROW_PITCH,
+  POD_FOOT,
   WAREHOUSE_H,
   finishPlan,
-  lowestDeskLaneY,
-  podRows,
-  podRowsHeight,
   room
 } from './office-floor-plan-arrangement'
 import {
-  addDeskRowLanes,
+  POD_ROW_PITCH,
   addPod,
+  addPodRowLanes,
+  podRowLaneY,
+  podRows,
+  podRowsHeight
+} from './office-floor-plan-pods'
+import {
   addWall,
   doorAcross,
   emptyDraft,
@@ -29,6 +36,11 @@ import {
 
 // Narrow floors stack the rooms; reception becomes a strip that doubles as the hall.
 const RECEPTION_STRIP_H = 52
+const HALL_LANE_INSET = 10
+// Each side lane is this far from its wall and from the pod, wide enough for the rooms above.
+const SIDE_LANE = 12
+// Bare floor above the first pod row, for its lane and the names over its heads.
+const POD_HEAD = AISLE
 
 /**
  * Narrow floors, one pod wide. The rooms stack: conference room on the back wall, the manager's
@@ -38,7 +50,7 @@ const RECEPTION_STRIP_H = 52
 export function stackedPlan(podCount: number): OfficeFloorPlan {
   const draft = emptyDraft()
   const rows = podRows(podCount, 1)
-  const innerW = AISLE + POD_COLUMN_PITCH
+  const innerW = POD.w + SIDE_LANE * 4
   const right = WALL + innerW
   const officeTop = BACK_WALL + BACK_ROOM_H + PARTITION
   const officeBottom = officeTop + BACK_ROOM_H
@@ -46,8 +58,8 @@ export function stackedPlan(podCount: number): OfficeFloorPlan {
   const hallY = receptionTop + HALL_LANE_INSET
   const receptionBottom = receptionTop + RECEPTION_STRIP_H
   const bullpenTop = receptionBottom + PARTITION
-  const podsTop = bullpenTop + POD_MARGIN
-  const bullpenBottom = podsTop + podRowsHeight(rows) + POD_MARGIN
+  const podsTop = bullpenTop + POD_HEAD
+  const bullpenBottom = podsTop + podRowsHeight(rows) + POD_FOOT
   const warehouseTop = bullpenBottom + PARTITION
   const managerW = 76
 
@@ -88,18 +100,19 @@ export function stackedPlan(podCount: number): OfficeFloorPlan {
   const meeting = furnishConference(draft, conference, { side: 'right', y: hallY })
   const kitchenCounter = furnishKitchen(draft, kitchen, meeting.doorX, hallY)
   const front = furnishReception(draft, reception, hallY, 12)
-  const aisles = [bullpen.x + AISLE / 2, right - AISLE / 2]
+  const aisles = [bullpen.x + SIDE_LANE, right - SIDE_LANE]
   const store = furnishWarehouse(draft, warehouse, [aisles[1]])
-  const lastLaneY = lowestDeskLaneY(podsTop, rows)
 
-  laneAcross(draft, hallY, aisles[0], aisles[1])
-  laneDown(draft, aisles[0], hallY, lastLaneY)
+  laneAcross(draft, hallY, reception.x + 8, aisles[1])
+  laneDown(draft, aisles[0], hallY, podRowLaneY(podsTop, rows))
   laneDown(draft, aisles[1], hallY, store.laneY)
-  const pods = Array.from({ length: Math.max(1, podCount) }, (_, index) => {
-    const y = podsTop + index * POD_ROW_PITCH
-    addDeskRowLanes(draft, y, aisles[0], aisles[1])
-    return addPod(draft, index, 'bullpen', { x: bullpen.x + AISLE, y })
-  })
+  addPodRowLanes(draft, podsTop, rows, aisles[0], aisles[1])
+  const pods = Array.from({ length: Math.max(1, podCount) }, (_, index) =>
+    addPod(draft, index, 'bullpen', {
+      x: bullpen.x + SIDE_LANE * 2,
+      y: podsTop + index * POD_ROW_PITCH
+    })
+  )
 
   addWall(draft, { x: WALL, y: officeTop - PARTITION, w: innerW, h: PARTITION }, 'partition', [
     doorAcross(
@@ -130,6 +143,7 @@ export function stackedPlan(podCount: number): OfficeFloorPlan {
     height: warehouseTop + WAREHOUSE_H + WALL,
     podColumns: 1,
     pods,
+    vacantSlots: [],
     managerDesk: office.desk,
     fixtures: {
       whiteboard: meeting.whiteboard,
@@ -137,6 +151,7 @@ export function stackedPlan(podCount: number): OfficeFloorPlan {
       kitchenCounter,
       ...front,
       shelf: store.shelf,
+      staging: store.staging,
       dock: store.dock
     }
   })

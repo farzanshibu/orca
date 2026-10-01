@@ -38,6 +38,9 @@ export function kitchenAnchorId(spot: number): FloorAnchorId {
   return `kitchen:${spot}`
 }
 
+/** Which way a character looks: at the viewer, showing a face, or away, showing a back. */
+export type FloorFacing = 'viewer' | 'away'
+
 export type FloorAnchor = {
   id: FloorAnchorId
   room: FloorRoomId
@@ -47,6 +50,7 @@ export type FloorAnchor = {
   approach: FloorPoint
   /** A chair, not a place to stand. */
   seated: boolean
+  facing: FloorFacing
 }
 
 /** An opening in a wall between two rooms. */
@@ -63,10 +67,16 @@ export type FloorRoom = { id: FloorRoomId; rect: FloorRect; doors: readonly Floo
 
 export type FloorDesk = {
   anchor: FloorAnchorId
-  /** The desk, monitor and chair are drawn relative to this cell. */
+  /** The desk's share of the floor, chair included; it is the desk's click target. */
   cell: FloorRect
-  /** Where the seated character's feet rest. */
+  /** Where the seated character's feet rest: against the desk's edge, on the side they sit. */
   seat: FloorPoint
+  /** `viewer` sits behind the desk, `away` in front of it. */
+  facing: FloorFacing
+  /** The desk itself, front panel included. Nobody walks through it. */
+  top: FloorRect
+  /** Where the occupant's name goes; the label grows upward from `at` when `above`. */
+  nameplate: { at: FloorPoint; above: boolean }
 }
 
 /** A block of desks that seats one role. */
@@ -77,6 +87,9 @@ export type FloorPod = {
   desks: readonly FloorDesk[]
 }
 
+/** A reserved pod place that no pod has taken yet. */
+export type FloorPodSlot = { room: FloorRoomId; rect: FloorRect }
+
 /** Things drawn in a room that later milestones attach content to. */
 export type FloorFixtures = {
   whiteboard: FloorRect
@@ -85,9 +98,13 @@ export type FloorFixtures = {
   receptionDesk: FloorRect
   /** The front panel of the reception desk; it carries the team name. */
   sign: FloorRect
+  /** The tray on the reception desk where notes for the human pile up. */
+  noteTray: FloorRect
   entrance: FloorRect
-  /** Where finished work is stacked. */
+  /** Storage racks along the warehouse's back wall. */
   shelf: FloorRect
+  /** Marked, empty floor beside the dock; finished work is stacked here. */
+  staging: FloorRect
   dock: FloorRect
 }
 
@@ -102,6 +119,8 @@ export type OfficeFloorPlan = {
   walls: readonly FloorWall[]
   doors: readonly FloorDoor[]
   pods: readonly FloorPod[]
+  /** Reserved pod places still empty; the room dresses them until a pod moves in. */
+  vacantSlots: readonly FloorPodSlot[]
   managerDesk: FloorDesk
   fixtures: FloorFixtures
   anchors: readonly FloorAnchor[]
@@ -112,19 +131,22 @@ export type OfficeFloorPlan = {
 /** Outer wall thickness. */
 export const WALL = 8
 /** Where the floor starts under the back wall; the wall's face is tall enough to hang a whiteboard. */
-export const BACK_WALL = 44
+export const BACK_WALL = 48
 /** Thickness of a wall between rooms. */
 export const PARTITION = 4
 /** Width of a door opening, and of the lane between pods. */
 export const AISLE = 16
-export const DESK_CELL = { w: 64, h: 76 }
+/** One desk's share of a pod's width. */
+export const DESK_W = 56
 export const POD_DESK_COLUMNS = 2
 export const POD_SEATS = 4
-export const POD = {
-  w: POD_DESK_COLUMNS * DESK_CELL.w,
-  h: (POD_SEATS / POD_DESK_COLUMNS) * DESK_CELL.h
-}
-/** From a desk cell's top to the lane a seated character walks out along. */
-export const DESK_LANE_OFFSET = 66
-/** From a desk cell's top to where the seated character's feet rest. */
-export const DESK_SEAT_OFFSET = 50
+export const POD = { w: POD_DESK_COLUMNS * DESK_W, h: 100 }
+/**
+ * A pod from its top edge down: the row that faces the viewer, the desk block the two rows share,
+ * then the row that faces away. Each seat is against the block's edge.
+ */
+export const POD_BLOCK = { top: 24, middle: 41, bottom: 62 }
+/** From the block's bottom edge to the feet of whoever sits in front of it. */
+export const SEAT_DROP = 22
+/** A pod's rows are entered from a lane this far above and below the pod. */
+export const POD_LANE_GAP = AISLE / 2
