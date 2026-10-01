@@ -28,15 +28,28 @@ describe('assertTeamAcceptsWorkerStart', () => {
       coordinatorPaneKey: null
     })
 
-    expect(() => assertTeamAcceptsWorkerStart({ db, run, terminal: 'term_jim' })).not.toThrow()
+    const start = (target: { run: typeof run; terminal: string | undefined }): void =>
+      assertTeamAcceptsWorkerStart({ db, ...target, taskId: undefined })
+    expect(() => start({ run, terminal: 'term_jim' })).not.toThrow()
     db.setTeamMemberPaused(jim.id, true)
-    expect(() => assertTeamAcceptsWorkerStart({ db, run: other, terminal: 'term_jim' })).toThrow(
-      /jim is paused/
-    )
-    expect(() => assertTeamAcceptsWorkerStart({ db, run: other, terminal: 'term_x' })).not.toThrow()
+    expect(() => start({ run: other, terminal: 'term_jim' })).toThrow(/jim is paused/)
+    expect(() => start({ run: other, terminal: 'term_x' })).not.toThrow()
     db.updateTeam(team.id, { status: 'paused' })
-    expect(() => assertTeamAcceptsWorkerStart({ db, run, terminal: undefined })).toThrow(
-      /Platform is paused/
-    )
+    expect(() => start({ run, terminal: undefined })).toThrow(/Platform is paused/)
+  })
+
+  it('refuses to dispatch a goal, and still takes its tasks', () => {
+    const team = db.createTeam({ repoId: 'repo_1', name: 'Platform' })
+    const run = db.getRun(team.run_id)!
+    const goal = db.createTask({ runId: team.run_id, spec: 'Ship v2' })
+    db.markTeamTaskKind(team.id, goal.id, 'goal')
+    const task = db.createTask({ runId: team.run_id, spec: 'Schema', parentId: goal.id })
+
+    expect(() =>
+      assertTeamAcceptsWorkerStart({ db, run, terminal: undefined, taskId: goal.id })
+    ).toThrow(/goal is split into tasks/)
+    expect(() =>
+      assertTeamAcceptsWorkerStart({ db, run, terminal: undefined, taskId: task.id })
+    ).not.toThrow()
   })
 })

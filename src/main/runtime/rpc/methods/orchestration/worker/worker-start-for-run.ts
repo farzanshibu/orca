@@ -14,6 +14,7 @@ import {
   decideWorkerStartMode,
   readWorkerStartModeSettings
 } from '../../orchestration-worker-start-mode'
+import { assertTeamAcceptsWorkerStart } from '../../../../team/team-work-admission'
 import { startFederatedWorker } from '../federation/federated-worker-start'
 import { startLocalWorker } from './local-worker-start'
 import type { WorkerStartInput } from './worker-start-schema'
@@ -46,6 +47,7 @@ export async function startWorkerForRun(args: {
 }): Promise<unknown> {
   const { params, runtime, db, run, coordinator, callerSession, existingTask } = args
   assertWorkerStartTimeout(params)
+  assertTeamAcceptsWorkerStart({ db, run, terminal: params.terminal, taskId: existingTask?.id })
   const readinessTimeoutMs = resolveWorkerStartReadinessTimeoutMs(params.timeoutMs)
   await assertWorkerStartTaskSpecWithinPromptBudget(params.spec ?? existingTask!.spec)
   const mode = decideWorkerStartMode({

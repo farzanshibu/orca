@@ -59,7 +59,6 @@ CREATE TABLE IF NOT EXISTS team_members (
   terminal_handle      TEXT,
   pane_key             TEXT,
   orca_session_id      TEXT,
-  current_dispatch_id  TEXT,
   archived_at          TEXT,
   created_at           TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at           TEXT NOT NULL DEFAULT (datetime('now'))

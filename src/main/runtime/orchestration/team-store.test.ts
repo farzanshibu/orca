@@ -103,8 +103,7 @@ describe('team store', () => {
     db.bindTeamMemberTerminal(member.id, {
       worktreeId: 'wt_1',
       terminalHandle: 'term_1',
-      paneKey: 'tab_1:leaf_1',
-      dispatchId: 'ctx_1'
+      paneKey: 'tab_1:leaf_1'
     })
     expect(db.findTeamMemberByTerminal('term_1')?.id).toBe(member.id)
     expect(db.setTeamMemberPaused(member.id, true).paused_at).not.toBeNull()
@@ -194,6 +193,7 @@ describe('team schema migration', () => {
       ALTER TABLE teams DROP COLUMN max_parallel;
       ALTER TABLE teams DROP COLUMN activity_pruned_through;
       ALTER TABLE team_member_queue DROP COLUMN source;
+      ALTER TABLE team_members ADD COLUMN current_dispatch_id TEXT;
     `)
     seeded.db.pragma('user_version = 43')
     seeded.close()
@@ -209,6 +209,8 @@ describe('team schema migration', () => {
       ] as const) {
         expect(reopened.hasColumn(table, column)).toBe(true)
       }
+      // Never written in v43; a member's current task is read from its active Dispatch.
+      expect(reopened.hasColumn('team_members', 'current_dispatch_id')).toBe(false)
       const team = reopened.createTeam({ repoId: 'repo_1', name: 'Platform' })
       const member = reopened.addTeamMember(team.id, {
         slug: 'jim',

@@ -2,6 +2,7 @@ import {
   TeamTaskAssignParams,
   TeamTaskCreateParams
 } from '../../../../../shared/rpc-contract/orchestration-team-params'
+import type { TeamTaskAssignResult } from '../../../../../shared/team-task-assignment'
 import { teamActivitySubject } from '../../../orchestration/db/teams/team-activity-store'
 import {
   requireTeamOperator,
@@ -9,7 +10,7 @@ import {
   resolveTeamCaller,
   teamCallerParticipant
 } from '../../../team/team-caller-authority'
-import { startTeamTaskDispatch } from '../../../team/team-task-dispatch'
+import { assertTeamTaskAssignable, startTeamTaskDispatch } from '../../../team/team-task-dispatch'
 import { acceptTeamTrigger } from '../../../team/team-trigger-intake'
 import { defineMethod } from '../../core'
 import { resolveTeamFromParams } from './team-selector'
@@ -61,6 +62,10 @@ export const TEAM_TASK_METHODS = [
       requireTeamOperatorOrManager(caller, 'assign tasks')
       const taskId = db.resolveTeamTaskRef(team.id, params.task)
       const member = params.member ? db.resolveTeamMemberSelector(team.id, params.member) : null
+      if (member) {
+        // Before anything is written: a refused assignment must not change the task's assignee.
+        assertTeamTaskAssignable(db, team, taskId, member)
+      }
       const meta = db.assignTeamTask(team.id, taskId, member?.id ?? null)
       const ref = `${team.task_prefix}-${meta.number}`
       const task = db.getTask(taskId)
@@ -74,7 +79,14 @@ export const TEAM_TASK_METHODS = [
         subject: task?.task_title ?? teamActivitySubject(task?.spec ?? ref)
       })
       if (!member) {
-        return { taskId, ref, member: null, started: false }
+        const unassigned: TeamTaskAssignResult = {
+          taskId,
+          ref,
+          member: null,
+          assigned: false,
+          started: false
+        }
+        return unassigned
       }
       // Assigning starts the task now when it can; otherwise Orca starts it once the reason clears.
       const result = await startTeamTaskDispatch({
@@ -84,15 +96,17 @@ export const TEAM_TASK_METHODS = [
         taskId,
         member
       })
-      return {
+      const assigned: TeamTaskAssignResult = {
         taskId,
         ref,
         member: member.slug,
+        assigned: true,
         started: result.outcome === 'started',
         ...(result.outcome === 'waiting' ? { waiting: result.waiting } : {}),
         ...(result.outcome === 'failed' ? { error: result.error } : {}),
         ...(result.outcome === 'waiting' ? {} : { dispatchId: result.dispatchId })
       }
+      return assigned
     }
   })
 ]

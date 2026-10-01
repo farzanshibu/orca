@@ -25,6 +25,10 @@ export function migrateV44(this: OrchestrationDb, current: number): void {
       this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`)
     }
   }
+  // v43 added this and nothing ever wrote it: a member's current task is its active Dispatch.
+  if (this.hasColumn('team_members', 'current_dispatch_id')) {
+    this.db.exec('ALTER TABLE team_members DROP COLUMN current_dispatch_id')
+  }
   this.db.exec(`
     CREATE INDEX IF NOT EXISTS idx_team_task_refs_assignee
       ON team_task_refs(assignee_member_id) WHERE assignee_member_id IS NOT NULL;

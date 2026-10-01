@@ -3,15 +3,24 @@ import { OrchestrationError } from '../orchestration/orchestration-error'
 import type { RunRow } from '../orchestration/types'
 
 /**
- * Refuses a worker start that a paused team or a paused member must not take: a dispatch into a
- * paused team's Run, or onto a paused member's terminal from any Run.
+ * Refuses a dispatch a team must not take: into a paused team's Run, onto a paused member's
+ * terminal from any Run, or of a goal, which the manager splits into tasks and is never worked
+ * itself. Every door that starts a dispatch calls this, so none can route around the team.
  */
 export function assertTeamAcceptsWorkerStart(args: {
   db: OrchestrationDb
   run: RunRow
   terminal: string | undefined
+  taskId: string | undefined
 }): void {
-  const { db, run, terminal } = args
+  const { db, run, terminal, taskId } = args
+  if (taskId && db.getTeamTaskMeta(taskId)?.kind === 'goal') {
+    throw new OrchestrationError(
+      'invalid_argument',
+      'A goal is split into tasks by the manager; dispatch its tasks instead.',
+      { taskId }
+    )
+  }
   const team = db.getTeamByRunId(run.id)
   if (team && team.status !== 'active') {
     throw new OrchestrationError(

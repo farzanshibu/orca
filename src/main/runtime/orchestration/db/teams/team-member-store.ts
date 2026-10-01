@@ -223,14 +223,13 @@ export function bindTeamMemberTerminal(
     terminalHandle: string | null
     paneKey: string | null
     orcaSessionId?: string | null
-    dispatchId?: string | null
   }
 ): TeamMemberRow {
   this.requireTeamMember(id)
   this.db
     .prepare(
       `UPDATE team_members SET worktree_id = ?, terminal_handle = ?, pane_key = ?,
-         orca_session_id = ?, current_dispatch_id = ?, updated_at = datetime('now')
+         orca_session_id = ?, updated_at = datetime('now')
        WHERE id = ?`
     )
     .run(
@@ -238,7 +237,6 @@ export function bindTeamMemberTerminal(
       binding.terminalHandle,
       binding.paneKey,
       binding.orcaSessionId ?? null,
-      binding.dispatchId ?? null,
       id
     )
   return this.requireTeamMember(id)

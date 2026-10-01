@@ -41,6 +41,58 @@ describe('worker-start --terminal target', () => {
     const started = await harness.startWorker({ terminal: 'term_worker' })
     expect(started.dispatchId).toEqual(expect.any(String))
   })
+
+  // A standing team member's terminal lives in the member's own worktree, never the coordinator's.
+  describe('when the terminal is in another worktree', () => {
+    beforeEach(() => {
+      const showTerminal = vi.mocked(harness.runtime.showTerminal).getMockImplementation()
+      const showWorkspace = vi
+        .mocked(harness.runtime.showManagedTerminalWorkspace)
+        .getMockImplementation()
+      if (!showTerminal || !showWorkspace) {
+        throw new Error('Expected the harness to stub terminal and workspace lookups')
+      }
+      vi.spyOn(harness.runtime, 'showTerminal').mockImplementation(async (handle) => ({
+        ...(await showTerminal(handle)),
+        worktreeId: handle === 'term_worker' ? 'repo::member' : 'repo::worktree'
+      }))
+      vi.spyOn(harness.runtime, 'showManagedTerminalWorkspace').mockImplementation(
+        async (selector) => ({
+          ...(await showWorkspace(selector)),
+          id: selector.replace(/^id:/, '')
+        })
+      )
+    })
+
+    it('refuses it without --worktree, which means the coordinator worktree', async () => {
+      const task = harness.db.createTask({ spec: 'member task', runId: harness.activeRunId })
+
+      await expect(
+        harness.call('orchestration.workerStart', {
+          task: task.id,
+          from: 'term_coord',
+          terminal: 'term_worker'
+        })
+      ).rejects.toMatchObject({ code: 'terminal_worktree_mismatch' })
+      expect(harness.db.getDispatchContext(task.id)).toBeUndefined()
+    })
+
+    it("starts when --worktree names the terminal's worktree", async () => {
+      const task = harness.db.createTask({ spec: 'member task', runId: harness.activeRunId })
+
+      await expect(
+        harness.call('orchestration.workerStart', {
+          task: task.id,
+          from: 'term_coord',
+          terminal: 'term_worker',
+          worktree: 'id:repo::member'
+        })
+      ).resolves.toMatchObject({ taskId: task.id, dispatchId: expect.any(String) })
+      const dispatch = harness.db.getDispatchContext(task.id)
+      expect(dispatch?.assignee_handle).toBe('term_worker')
+      expect(harness.db.getWorkerDispatch(dispatch?.id ?? '')?.worktree_id).toBe('repo::member')
+    })
+  })
 })
 
 // The other door into the same self-adoption: manual dispatch never compared `to` to the caller.

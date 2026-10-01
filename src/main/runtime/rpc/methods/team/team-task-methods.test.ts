@@ -102,7 +102,13 @@ describe('team task assignment', () => {
     const task = db.createTask({ runId: team.run_id, spec: 'Build the API' })
     await expect(
       call('orchestration.teamTaskAssign', { team: team.id, task: 'pla-1', member: 'jim' })
-    ).resolves.toMatchObject({ ref: 'pla-1', member: 'jim', started: true, dispatchId: 'ctx_new' })
+    ).resolves.toMatchObject({
+      ref: 'pla-1',
+      member: 'jim',
+      assigned: true,
+      started: true,
+      dispatchId: 'ctx_new'
+    })
     expect(startWorker).toHaveBeenCalledWith(
       expect.objectContaining({
         params: {
@@ -123,7 +129,7 @@ describe('team task assignment', () => {
     db.createTask({ runId: team.run_id, spec: 'Handlers', deps: [first.id] })
     await expect(
       call('orchestration.teamTaskAssign', { team: team.id, task: 'pla-2', member: 'jim' })
-    ).resolves.toMatchObject({ started: false, waiting: 'deps' })
+    ).resolves.toMatchObject({ assigned: true, started: false, waiting: 'deps' })
 
     db.setTeamMemberPaused(member('jim').id, true, 'operator')
     await expect(
@@ -175,6 +181,11 @@ describe('team task assignment', () => {
     await expect(
       call('orchestration.teamTaskAssign', { team: team.id, task: 'pla-2', member: 'michael' })
     ).rejects.toThrow(/manager coordinates/)
+    // A refused assignment is not recorded: the scheduler must never see the manager as assignee.
+    expect(db.listTeamTaskMeta(team.id).map((meta) => meta.assignee_member_id)).toEqual([
+      null,
+      null
+    ])
     attestedHandle = 'term_jim'
     await expect(
       call('orchestration.teamTaskAssign', { team: team.id, task: 'pla-2', member: 'jim' })
@@ -223,6 +234,28 @@ describe('team task assignment', () => {
     ])
   })
 
+  it('leaves the assignee alone when the task is already running or finished', async () => {
+    const task = db.createTask({ runId: team.run_id, spec: 'Build' })
+    db.assignTeamTask(team.id, task.id, member('jim').id)
+    const pam = db.addTeamMember(team.id, { slug: 'pam', roleSlug: 'designer', agent: 'claude' })
+    db.createDispatchContext({
+      taskId: task.id,
+      assigneeHandle: 'term_jim',
+      assigneePaneKey: JIM_PANE,
+      creator: { kind: 'system' },
+      maxDepth: Number.MAX_SAFE_INTEGER
+    })
+    await expect(
+      call('orchestration.teamTaskAssign', { team: team.id, task: task.id, member: 'pam' })
+    ).rejects.toThrow(/already dispatched/)
+    db.db.prepare("UPDATE tasks SET status = 'completed' WHERE id = ?").run(task.id)
+    await expect(
+      call('orchestration.teamTaskAssign', { team: team.id, task: task.id, member: 'pam' })
+    ).rejects.toThrow(/already completed/)
+    expect(db.getTeamTaskMeta(task.id)?.assignee_member_id).toBe(member('jim').id)
+    expect(pam.id).not.toBe(member('jim').id)
+  })
+
   it('reports a start that failed and unassigns on request', async () => {
     db.createTask({ runId: team.run_id, spec: 'Build' })
     startWorker.mockResolvedValue({ dispatchId: 'ctx_bad', state: 'failed', lastError: 'boom' })
@@ -231,7 +264,7 @@ describe('team task assignment', () => {
     ).resolves.toMatchObject({ started: false, error: 'boom', dispatchId: 'ctx_bad' })
     await expect(
       call('orchestration.teamTaskAssign', { team: team.id, task: 'pla-1', unassign: true })
-    ).resolves.toMatchObject({ member: null, started: false })
+    ).resolves.toMatchObject({ member: null, assigned: false, started: false })
     expect(db.listTeamTaskMeta(team.id)[0]?.assignee_member_id).toBeNull()
   })
 })

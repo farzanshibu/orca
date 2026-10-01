@@ -61,7 +61,6 @@ export const TeamMemberRowSchema = z.object({
   terminal_handle: nullableText,
   pane_key: nullableText,
   orca_session_id: nullableText,
-  current_dispatch_id: nullableText,
   archived_at: nullableText,
   created_at: z.string(),
   updated_at: z.string()

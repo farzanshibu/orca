@@ -29,7 +29,6 @@ import { tearDownFailedWorkerStart } from './failed-worker-start-teardown'
 import { requireWorkerAuthority, type WorkerEffect } from './worker-topology'
 import { prepareLocalWorkerStart } from './worker-start-validation'
 import { deliverAndSettleWorkerStartReadiness } from './worker-start-readiness-settlement'
-import { assertTeamAcceptsWorkerStart } from '../../../../team/team-work-admission'
 
 type WorkerStartMutation = {
   callerFingerprint: string
@@ -52,7 +51,6 @@ export async function startLocalWorker(args: {
 }): Promise<unknown> {
   const { params, runtime, db, run, coordinator, callerSession, existingTask } = args
   const { orchestrationMutation } = args
-  assertTeamAcceptsWorkerStart({ db, run, terminal: params.terminal })
   const coordinatorPane = coordinator?.paneKey ?? null
   const requestedWorktree = params.worktree ?? 'current'
   const createsWorktree = requestedWorktree === 'new-child' || requestedWorktree === 'new-top-level'

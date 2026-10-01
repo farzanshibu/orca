@@ -1,24 +1,13 @@
 import { z } from 'zod'
+import type { TeamDispatchWaitReason } from '../../../shared/team-task-assignment'
 import type { OrchestrationDb } from '../orchestration/db'
 import { OrchestrationError } from '../orchestration/orchestration-error'
 import type { TeamMemberRow, TeamRow } from '../orchestration/team-types'
+import type { TaskRow } from '../orchestration/types'
 import type { RpcContext } from '../rpc/core'
 import { orchestrationCallerIdentity } from '../rpc/methods/orchestration/runs/run-scope'
 import { startWorkerForRun } from '../rpc/methods/orchestration/worker/worker-start-for-run'
 import { bindTeamManagerRun, resolveLiveTeamMemberHandle } from './team-member-lifecycle'
-
-/** Why an assigned task has not started yet; each clears on its own, so the scheduler retries. */
-export const TEAM_DISPATCH_WAIT_REASONS = [
-  'deps',
-  'task_blocked',
-  'member_busy',
-  'member_paused',
-  'member_not_running',
-  'member_unverifiable',
-  'manager_not_running',
-  'team_inactive'
-] as const
-export type TeamDispatchWaitReason = (typeof TEAM_DISPATCH_WAIT_REASONS)[number]
 
 export type TeamTaskDispatchResult =
   | { outcome: 'started'; dispatchId: string; receipt: unknown }
@@ -74,22 +63,21 @@ function managerCoordinator(runtime: TeamDispatchRuntime, db: OrchestrationDb, t
 }
 
 /**
- * Starts `taskId` on `member`'s own terminal and worktree, as the manager's dispatch. Returns
- * `waiting` rather than throwing for anything that clears by itself, so callers can retry.
+ * Refuses a pairing that can never start: a goal, a member not on the team, the manager, or a
+ * task already running or finished. Callers check this before recording the assignment, so a
+ * refused one leaves the task's assignee as it was.
  */
-export async function startTeamTaskDispatch(args: {
-  runtime: TeamDispatchRuntime
-  db: OrchestrationDb
-  team: TeamRow
-  taskId: string
+export function assertTeamTaskAssignable(
+  db: OrchestrationDb,
+  team: TeamRow,
+  taskId: string,
   member: TeamMemberRow
-}): Promise<TeamTaskDispatchResult> {
-  const { runtime, db, team, member } = args
-  const meta = db.requireTeamTaskMeta(team.id, args.taskId)
+): TaskRow {
+  const meta = db.requireTeamTaskMeta(team.id, taskId)
   if (meta.kind === 'goal') {
     throw new OrchestrationError(
       'invalid_argument',
-      'A goal is split into tasks by the manager; dispatch its tasks instead.'
+      'A goal is split into tasks by the manager; assign its tasks instead.'
     )
   }
   if (member.team_id !== team.id || member.archived_at) {
@@ -101,21 +89,40 @@ export async function startTeamTaskDispatch(args: {
       'The manager coordinates the team; assign the task to another member.'
     )
   }
+  const task = db.getTask(taskId)
+  if (!task) {
+    throw new OrchestrationError('task_not_found', `Task ${taskId} was not found.`)
+  }
+  if (task.status === 'dispatched' || task.status === 'completed') {
+    throw new OrchestrationError(
+      'team_conflict',
+      `Task ${team.task_prefix}-${meta.number} is already ${task.status}.`
+    )
+  }
+  return task
+}
+
+/**
+ * Starts `taskId` on `member`'s own terminal and worktree, as the manager's dispatch. Returns
+ * `waiting` rather than throwing for anything that clears by itself, so callers can retry.
+ */
+export async function startTeamTaskDispatch(args: {
+  runtime: TeamDispatchRuntime
+  db: OrchestrationDb
+  team: TeamRow
+  taskId: string
+  member: TeamMemberRow
+}): Promise<TeamTaskDispatchResult> {
+  const { runtime, db, team, member } = args
+  const task = assertTeamTaskAssignable(db, team, args.taskId, member)
   if (team.status !== 'active' || team.closing_at) {
     return { outcome: 'waiting', waiting: 'team_inactive' }
-  }
-  const task = db.getTask(args.taskId)
-  if (!task) {
-    throw new OrchestrationError('task_not_found', `Task ${args.taskId} was not found.`)
   }
   if (task.status === 'pending') {
     return { outcome: 'waiting', waiting: 'deps' }
   }
   if (task.status === 'blocked') {
     return { outcome: 'waiting', waiting: 'task_blocked' }
-  }
-  if (task.status !== 'ready' && task.status !== 'failed') {
-    throw new OrchestrationError('team_conflict', `Task ${meta.number} is already ${task.status}.`)
   }
   const availability = memberAvailability(runtime, db, member)
   if ('waiting' in availability) {

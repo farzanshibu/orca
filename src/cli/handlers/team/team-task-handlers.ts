@@ -1,17 +1,10 @@
+import type { TeamTaskAssignResult } from '../../../shared/team-task-assignment'
 import type { CommandHandler } from '../../dispatch'
 import { getOptionalStringFlag, getRequiredStringFlag } from '../../flags'
 import { printResult } from '../../format'
 import { teamParams } from './team-cli-format'
 
-type TaskAssignResult = {
-  ref: string
-  member: string | null
-  started: boolean
-  waiting?: string
-  error?: string
-}
-
-function describeAssignment(value: TaskAssignResult): string {
+function describeAssignment(value: TeamTaskAssignResult): string {
   if (!value.member) {
     return `Unassigned ${value.ref}`
   }
@@ -42,7 +35,7 @@ export const TEAM_TASK_HANDLERS: Record<string, CommandHandler> = {
   },
 
   'team task assign': async ({ flags, client, json }) => {
-    const result = await client.call<TaskAssignResult>('orchestration.teamTaskAssign', {
+    const result = await client.call<TeamTaskAssignResult>('orchestration.teamTaskAssign', {
       ...teamParams(flags),
       task: getRequiredStringFlag(flags, 'task'),
       member: getOptionalStringFlag(flags, 'member'),

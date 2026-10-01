@@ -11,6 +11,7 @@ import {
   taskNotStartableError
 } from '../../../../orchestration/task-dispatch-refusal'
 import { resolveRunScope } from './run-scope'
+import { assertTeamAcceptsWorkerStart } from '../../../../team/team-work-admission'
 import { DispatchParams, DispatchShowParams } from '../schemas'
 import { resolveDispatchAssigneeParty } from '../../../../orchestration/orchestration-party'
 
@@ -49,6 +50,7 @@ export const ORCHESTRATION_DISPATCH_METHODS = [
         })
       }
       const assignee = params.to ? resolveDispatchAssigneeParty(params.to, db).address : undefined
+      assertTeamAcceptsWorkerStart({ db, run, terminal: assignee, taskId: task.id })
 
       // Why: dry-run previews the preamble without mutating state, so it skips the ready-status check and uses a placeholder dispatchId.
       if (params.dryRun) {
