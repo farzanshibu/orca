@@ -9,6 +9,7 @@ const TeamQueueItemSchema = z.object({
   member_id: z.string(),
   text: z.string(),
   position: z.number(),
+  source: z.string(),
   created_at: z.string(),
   delivered_at: z.string().nullable(),
   failed_reason: z.string().nullable()
@@ -82,7 +83,9 @@ export function resolveTeamTaskRef(this: OrchestrationDb, teamId: string, ref: s
 export function enqueueTeamMemberMessage(
   this: OrchestrationDb,
   memberId: string,
-  text: string
+  text: string,
+  /** What queued it, shown in the feed: operator, enrich, goal, mission:<name>, webhook, closing, compact. */
+  source = 'operator'
 ): TeamQueueItem {
   this.requireTeamMember(memberId)
   if (!text.trim()) {
@@ -96,8 +99,10 @@ export function enqueueTeamMemberMessage(
   )
   const id = generateId('queue')
   this.db
-    .prepare('INSERT INTO team_member_queue (id, member_id, text, position) VALUES (?, ?, ?, ?)')
-    .run(id, memberId, text, (last?.position ?? 0) + 1)
+    .prepare(
+      'INSERT INTO team_member_queue (id, member_id, text, position, source) VALUES (?, ?, ?, ?, ?)'
+    )
+    .run(id, memberId, text, (last?.position ?? 0) + 1, source)
   return this.requireTeamQueueItem(id)
 }
 

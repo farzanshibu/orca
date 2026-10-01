@@ -1,3 +1,4 @@
+import { TEAM_ACTIVITY_METHODS } from './team-activity-methods'
 import { TEAM_AUTOMATION_METHODS } from './team-automation-methods'
 import { TEAM_CAPABILITY_METHODS } from './team-capability-methods'
 import { TEAM_MEMORY_METHODS } from './team-memory-methods'
@@ -17,5 +18,6 @@ export const ORCHESTRATION_TEAM_METHODS = [
   ...TEAM_CAPABILITY_METHODS,
   ...TEAM_AUTOMATION_METHODS,
   ...TEAM_MEMORY_METHODS,
-  ...TEAM_TASK_METHODS
+  ...TEAM_TASK_METHODS,
+  ...TEAM_ACTIVITY_METHODS
 ]

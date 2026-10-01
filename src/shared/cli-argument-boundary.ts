@@ -17,6 +17,7 @@ export const CLI_BOOLEAN_FLAGS = new Set([
   'enrich',
   'enter',
   'focus',
+  'follow',
   'force',
   'fresh',
   'full',

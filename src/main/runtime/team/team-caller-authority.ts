@@ -38,6 +38,13 @@ export function resolveTeamCaller(
     : { kind: 'operator' }
 }
 
+/** The caller as the activity feed names a sender. */
+export function teamCallerParticipant(caller: TeamCaller): { party: string; memberId?: string } {
+  return caller.kind === 'member'
+    ? { party: 'member', memberId: caller.member.id }
+    : { party: 'operator' }
+}
+
 export function requireTeamOperator(caller: TeamCaller, action: string): void {
   if (caller.kind !== 'operator') {
     throw new OrchestrationError(

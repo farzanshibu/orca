@@ -183,13 +183,7 @@ describe('team schema migration', () => {
   it('adds assignment, queue sources, and the activity feed to a v43 database', () => {
     const path = join(dir, 'orchestration.db')
     const seeded = new OrchestrationDb(path)
-    // A v43 database has no activity triggers either; they would name the dropped table.
     seeded.db.exec(`
-      DROP TRIGGER IF EXISTS trg_team_activity_message_insert;
-      DROP TRIGGER IF EXISTS trg_team_activity_message_read;
-      DROP TRIGGER IF EXISTS trg_team_activity_task_insert;
-      DROP TRIGGER IF EXISTS trg_team_activity_task_status;
-      DROP TRIGGER IF EXISTS trg_team_activity_dispatch_status;
       DROP TABLE team_activity;
       DROP INDEX idx_team_task_refs_assignee;
       DROP TABLE team_task_refs;

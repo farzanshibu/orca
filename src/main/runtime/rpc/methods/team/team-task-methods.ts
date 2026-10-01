@@ -2,10 +2,12 @@ import {
   TeamTaskAssignParams,
   TeamTaskCreateParams
 } from '../../../../../shared/rpc-contract/orchestration-team-params'
+import { teamActivitySubject } from '../../../orchestration/db/teams/team-activity-store'
 import {
   requireTeamOperator,
   requireTeamOperatorOrManager,
-  resolveTeamCaller
+  resolveTeamCaller,
+  teamCallerParticipant
 } from '../../../team/team-caller-authority'
 import { startTeamTaskDispatch } from '../../../team/team-task-dispatch'
 import { acceptTeamTrigger } from '../../../team/team-trigger-intake'
@@ -55,11 +57,22 @@ export const TEAM_TASK_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperatorOrManager(resolveTeamCaller(context, db, team), 'assign tasks')
+      const caller = resolveTeamCaller(context, db, team)
+      requireTeamOperatorOrManager(caller, 'assign tasks')
       const taskId = db.resolveTeamTaskRef(team.id, params.task)
       const member = params.member ? db.resolveTeamMemberSelector(team.id, params.member) : null
       const meta = db.assignTeamTask(team.id, taskId, member?.id ?? null)
       const ref = `${team.task_prefix}-${meta.number}`
+      const task = db.getTask(taskId)
+      db.recordTeamActivity({
+        teamId: team.id,
+        kind: 'task_assigned',
+        status: member ? 'assigned' : 'unassigned',
+        taskId,
+        from: teamCallerParticipant(caller),
+        to: member ? { party: 'member', memberId: member.id } : { party: 'team' },
+        subject: task?.task_title ?? teamActivitySubject(task?.spec ?? ref)
+      })
       if (!member) {
         return { taskId, ref, member: null, started: false }
       }

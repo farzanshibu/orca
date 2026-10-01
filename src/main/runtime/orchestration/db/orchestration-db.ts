@@ -10,6 +10,7 @@ import {
 import { createTables } from './schema/create-tables'
 import { migrate } from './schema/migrate'
 import { backfillStructuredWorkerOrcaSessionIds } from './schema/structured-worker-orca-session-backfill'
+import { createTeamActivityTriggersIfTeamsExist } from './teams/team-activity-triggers'
 
 class OrchestrationDbCore {
   db: Database.Database
@@ -33,6 +34,7 @@ class OrchestrationDbCore {
     backfillFederatedStubHomeRuns(this.db)
     backfillStructuredWorkerOrcaSessionIds(this.db)
     createCoordinatorMailRoutingTrigger.call(this as unknown as OrchestrationDb)
+    createTeamActivityTriggersIfTeamsExist(this.db)
     rememberCurrentRunCoordinatorHandles.call(this as unknown as OrchestrationDb)
     hardenOrchestrationDatabaseFiles(dbPath)
   }

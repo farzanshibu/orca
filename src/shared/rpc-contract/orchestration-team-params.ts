@@ -34,6 +34,13 @@ export const TeamLogParams = z.object({
   limit: OptionalFiniteNumber
 })
 
+export const TeamActivityParams = z.object({
+  ...TeamSelector,
+  /** The last sequence already seen; omitted returns the newest events. */
+  afterSequence: z.number().int().nonnegative().optional(),
+  limit: OptionalFiniteNumber
+})
+
 export const TeamUpdateParams = z.object({
   ...TeamSelector,
   charter: OptionalString,

@@ -144,6 +144,7 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
       'team show',
       'team update',
       'team log',
+      'team activity',
       'team member add',
       'team member update',
       'team member rm',

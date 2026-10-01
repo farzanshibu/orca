@@ -23,7 +23,7 @@ export function beginTeamClosingTime(
   db.setTeamClosing(team.id, true)
   const running = db.listTeamMembers(team.id).filter(isLive)
   for (const member of running) {
-    db.enqueueTeamMemberMessage(member.id, CLOSING_TIME_MESSAGE)
+    db.enqueueTeamMemberMessage(member.id, CLOSING_TIME_MESSAGE, 'closing')
   }
   return running.length
 }

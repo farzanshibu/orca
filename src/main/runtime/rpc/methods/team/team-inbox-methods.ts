@@ -46,6 +46,8 @@ export const TEAM_INBOX_METHODS = [
         consumerGeneration: run.consumer_generation,
         body: params.body
       })
+      // The mailbox files the answer under the Run's address, which reads as the manager's.
+      db.attributeTeamActivityMessage(answered.message.id, { party: 'operator' })
       if (db.getFederatedDispatch(question.dispatch_id)) {
         db.enqueueFederationRelay({
           dispatchId: question.dispatch_id,

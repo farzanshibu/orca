@@ -4,6 +4,7 @@ import { printResult } from '../../format'
 
 export type TeamSummary = { id: string; name: string; status: string; charter: string }
 export type MemberView = {
+  id: string
   slug: string
   spend_usd: number | null
   spend_cap_usd: number | null

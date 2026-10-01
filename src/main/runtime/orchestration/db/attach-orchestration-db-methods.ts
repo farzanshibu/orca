@@ -53,6 +53,7 @@ import { attachSchemaMigrate } from './schema/migrate'
 import { attachSchemaColumnProbes } from './schema/schema-column-probes'
 import { attachTaskStore } from './tasks/task-store'
 import { attachTeamMemberSpendStore } from './teams/team-member-spend-store'
+import { attachTeamActivityStore } from './teams/team-activity-store'
 import { attachTeamAutomationStore } from './teams/team-automation-store'
 import { attachTeamBoardStore } from './teams/team-board-store'
 import { attachTeamInboxStore } from './teams/team-inbox-store'
@@ -152,4 +153,5 @@ export function attachOrchestrationDbMethods(ctor: { prototype: object }): void 
   attachTeamAutomationStore(ctor)
   attachTeamMemberSpendStore(ctor)
   attachTeamTaskMetaStore(ctor)
+  attachTeamActivityStore(ctor)
 }

@@ -52,6 +52,7 @@ import type { SchemaMigrateMethods } from './schema/migrate'
 import type { SchemaColumnProbesMethods } from './schema/schema-column-probes'
 import type { TaskStoreMethods } from './tasks/task-store'
 import type { TeamMemberSpendStoreMethods } from './teams/team-member-spend-store'
+import type { TeamActivityStoreMethods } from './teams/team-activity-store'
 import type { TeamAutomationStoreMethods } from './teams/team-automation-store'
 import type { TeamBoardStoreMethods } from './teams/team-board-store'
 import type { TeamInboxStoreMethods } from './teams/team-inbox-store'
@@ -150,4 +151,5 @@ export type OrchestrationDbMethods = AttemptObservationStoreMethods &
   TeamBoardStoreMethods &
   TeamAutomationStoreMethods &
   TeamMemberSpendStoreMethods &
-  TeamTaskMetaStoreMethods
+  TeamTaskMetaStoreMethods &
+  TeamActivityStoreMethods

@@ -65,7 +65,7 @@ export function acceptTeamTrigger(
   }
   const text = `[${trigger.source}] ${trigger.text}${taskId ? `\n(Created task ${taskId}.)` : ''}`
   for (const member of targets) {
-    db.enqueueTeamMemberMessage(member.id, text)
+    db.enqueueTeamMemberMessage(member.id, text, trigger.source)
   }
   return { queued: targets.length, taskId }
 }

@@ -64,6 +64,8 @@ export const ORCHESTRATION_CONTRACT_VERSION = 1 as const
 export const ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY = 'orchestration.contract.v1' as const
 // Standing teams: the `orchestration.team*` methods.
 export const ORCHESTRATION_TEAM_RUNTIME_CAPABILITY = 'orchestration.team.v1' as const
+// Team fan-out: task assignment, goals, and the `teamActivity` feed.
+export const ORCHESTRATION_TEAM_FANOUT_RUNTIME_CAPABILITY = 'orchestration.team.fanout.v1' as const
 export const FOLDER_WORKSPACE_PATH_STATUS_RUNTIME_CAPABILITY =
   'folder-workspace.path-status.v1' as const
 export const LINEAR_ISSUE_ATTRIBUTE_FILTER_RUNTIME_CAPABILITY =

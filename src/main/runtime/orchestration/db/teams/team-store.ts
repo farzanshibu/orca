@@ -3,6 +3,7 @@ import { OrchestrationError } from '../../orchestration-error'
 import { TeamRowSchema, type TeamRow, type TeamStatus } from '../../team-types'
 import { generateId } from '../generated-id'
 import type { OrchestrationDb } from '../orchestration-db'
+import { createTeamActivityTriggers } from './team-activity-triggers'
 import { queryTeamRow, queryTeamRows } from './team-row-query'
 
 export function createTeam(
@@ -32,6 +33,8 @@ export function createTeam(
       'INSERT INTO teams (id, repo_id, name, run_id, charter, task_prefix) VALUES (?, ?, ?, ?, ?, ?)'
     )
     .run(id, params.repoId, name, run.id, params.charter?.trim() ?? '', teamTaskPrefix(name))
+  // The first team is what gives a database the activity triggers.
+  createTeamActivityTriggers(this.db)
   return this.requireTeam(id)
 }
 

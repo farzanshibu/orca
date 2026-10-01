@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 import type { Repo } from '../../../../../shared/repo-types'
 import { OrchestrationDb } from '../../../orchestration/db'
 import type { TeamRow } from '../../../orchestration/team-types'
@@ -182,6 +183,44 @@ describe('team task assignment', () => {
     await expect(
       call('orchestration.teamTaskAssign', { team: team.id, task: 'pla-2', member: 'jim' })
     ).resolves.toMatchObject({ started: true })
+  })
+
+  it('puts assignments and direct sends in the activity feed with who made them', async () => {
+    db.createTask({ runId: team.run_id, spec: 'Build the API', taskTitle: 'API' })
+    await call('orchestration.teamTaskAssign', { team: team.id, task: 'pla-1', member: 'jim' })
+    vi.spyOn(runtime, 'sendTerminalAgentPrompt').mockResolvedValue({
+      handle: 'term_jim',
+      accepted: true,
+      bytesWritten: 1
+    })
+    attestedHandle = 'term_mgr'
+    await call('orchestration.teamMemberSend', {
+      team: team.id,
+      member: 'jim',
+      text: ['Check the migration first', 'then the handlers'].join('\n')
+    })
+    const page = await call('orchestration.teamActivity', { team: team.id })
+    expect(page).toMatchObject({ reset: false, hasMore: false })
+    const events = z
+      .object({ events: z.array(z.unknown()) })
+      .parse(page)
+      .events.slice(-2)
+    expect(events).toMatchObject([
+      {
+        kind: 'task_assigned',
+        task_ref: 'pla-1',
+        subject: 'API',
+        from: { party: 'operator' },
+        to: { member_ids: [member('jim').id] }
+      },
+      {
+        kind: 'delivery',
+        channel: 'direct',
+        subject: 'Check the migration first',
+        from: { party: 'member', member_id: member('michael').id },
+        to: { member_ids: [member('jim').id] }
+      }
+    ])
   })
 
   it('reports a start that failed and unassigns on request', async () => {

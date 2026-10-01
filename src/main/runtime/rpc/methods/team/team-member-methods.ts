@@ -5,11 +5,13 @@ import {
   TeamMemberSendParams,
   TeamMemberUpdateParams
 } from '../../../../../shared/rpc-contract/orchestration-team-params'
+import { teamActivitySubject } from '../../../orchestration/db/teams/team-activity-store'
 import { OrchestrationError } from '../../../orchestration/orchestration-error'
 import {
   requireTeamOperator,
   requireTeamOperatorOrManager,
-  resolveTeamCaller
+  resolveTeamCaller,
+  teamCallerParticipant
 } from '../../../team/team-caller-authority'
 import {
   assertTeamMemberLaunchable,
@@ -173,7 +175,23 @@ export const TEAM_MEMBER_METHODS = [
           `Team member ${member.slug} is paused by the operator.`
         )
       }
-      return sendToTeamMember({ context, member, text: params.text, interrupt: params.interrupt })
+      const sent = await sendToTeamMember({
+        context,
+        member,
+        text: params.text,
+        interrupt: params.interrupt
+      })
+      // Typed straight into the pane, so no mail row exists for the feed to pick up.
+      db.recordTeamActivity({
+        teamId: team.id,
+        kind: 'delivery',
+        channel: 'direct',
+        status: params.interrupt ? 'interrupted' : 'delivered',
+        from: teamCallerParticipant(caller),
+        to: { party: 'member', memberId: member.id },
+        subject: teamActivitySubject(params.text)
+      })
+      return sent
     }
   })
 ]

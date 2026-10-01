@@ -95,7 +95,7 @@ export class TeamSpendMonitor {
     if (tokens - (member.compacted_at_tokens ?? 0) < threshold) {
       return
     }
-    db.enqueueTeamMemberMessage(member.id, '/compact')
+    db.enqueueTeamMemberMessage(member.id, '/compact', 'compact')
     db.markTeamMemberCompacted(member.id, tokens)
   }
 

@@ -37,6 +37,15 @@ export const TEAM_COMMAND_SPECS: CommandSpec[] = [
     allowedFlags: [...GLOBAL_FLAGS, ...TEAM, 'limit']
   },
   {
+    path: ['team', 'activity'],
+    summary:
+      'Show what the team is doing, oldest first: mail, deliveries, dispatches, tasks, and goals',
+    usage:
+      'orca team activity --team <id|name> [--after <sequence>] [--limit <n>] [--follow] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, ...TEAM, 'after', 'limit', 'follow'],
+    examples: ['orca team activity --team Platform --follow']
+  },
+  {
     path: ['team', 'member', 'add'],
     summary: 'Add a member with a role, agent, and optional model',
     usage:

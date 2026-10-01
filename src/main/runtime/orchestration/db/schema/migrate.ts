@@ -1,6 +1,7 @@
 import { resolveOrchestrationMigrationStartVersion } from '../../orchestration-schema-version-skew'
 import { SCHEMA_VERSION } from '../contract-constants'
 import type { OrchestrationDb } from '../orchestration-db'
+import { dropTeamActivityTriggers } from '../teams/team-activity-triggers'
 import { applySchemaMigrationsV13ToV30 } from './migrate-v13-v30'
 import { applySchemaMigrationsV2ToV12 } from './migrate-v2-v12'
 import { migrateMailboxPointerEnterV33 } from './migrate-mailbox-pointer-enter-v33'
@@ -29,6 +30,8 @@ export function migrate(this: OrchestrationDb): void {
     this.db.exec(
       'DROP TRIGGER IF EXISTS trg_deliveries_one_outstanding; DROP VIEW IF EXISTS outstanding_deliveries;'
     )
+    // Recreated after migrate on every open; a step that rebuilds a table they name would fail.
+    dropTeamActivityTriggers(this.db)
     applySchemaMigrationsV2ToV12.call(this, current)
     applySchemaMigrationsV13ToV30.call(this, current)
     migrateMailboxPointerEnterV33.call(this, current)

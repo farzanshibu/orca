@@ -390,6 +390,7 @@ import {
   RunUseParams
 } from './orchestration-runs-params'
 import {
+  TeamActivityParams,
   TeamAnswerParams,
   TeamClosingTimeParams,
   TeamCreateParams,
@@ -1040,6 +1041,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'orchestration.runUse': RunUseParams,
   'orchestration.taskCreate': TaskCreateParams,
   'orchestration.taskList': TaskListParams,
+  'orchestration.teamActivity': TeamActivityParams,
   'orchestration.teamAnswer': TeamAnswerParams,
   'orchestration.teamClosingTime': TeamClosingTimeParams,
   'orchestration.teamCreate': TeamCreateParams,

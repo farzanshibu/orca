@@ -1,4 +1,5 @@
 import { agentHookServer } from '../agent-hooks/server'
+import { TEAM_ACTIVITY_RETENTION } from '../runtime/orchestration/db/teams/team-activity-store'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { resolveLiveTeamMemberHandle, stopTeamMember } from '../runtime/team/team-member-lifecycle'
 import { TeamClosingTime } from '../runtime/team/team-closing-time'
@@ -8,6 +9,8 @@ import { TeamSpendMonitor } from '../runtime/team/team-spend-monitor'
 import { TeamToolLoopBreaker } from '../runtime/team/team-tool-loop-breaker'
 import { TeamWebhookServer } from '../runtime/team/team-webhook-server'
 import { mainProcessState as state } from './main-process-state'
+
+const ACTIVITY_PRUNE_INTERVAL_MS = 60 * 60_000
 
 /** Background loops for standing teams: spend and breaker, and idle delivery of queued messages. */
 export function startTeamBackgroundLoops(runtime: OrcaRuntimeService): void {
@@ -37,6 +40,14 @@ export function startTeamBackgroundLoops(runtime: OrcaRuntimeService): void {
     }
   }).start()
   new TeamMissionScheduler(() => runtime.getOrchestrationDb()).start()
+  const pruneActivity = setInterval(() => {
+    try {
+      runtime.getOrchestrationDb().pruneTeamActivity(TEAM_ACTIVITY_RETENTION)
+    } catch (error) {
+      console.warn('[team-activity] prune failed', error)
+    }
+  }, ACTIVITY_PRUNE_INTERVAL_MS)
+  pruneActivity.unref?.()
   new TeamWebhookServer(() => runtime.getOrchestrationDb()).start()
   const loopBreaker = new TeamToolLoopBreaker(() => runtime.getOrchestrationDb(), {
     interruptMember: async (member) => {
