@@ -7,6 +7,11 @@ import {
 } from '../../team-types'
 import { generateId } from '../generated-id'
 import type { OrchestrationDb } from '../orchestration-db'
+import {
+  TEAM_MEMBER_PANE_KEY_MATCH_SUFFIX_SQL,
+  isEquivalentPaneKey,
+  paneKeyMatchSuffix
+} from '../pane-key-match'
 import { queryTeamRow, queryTeamRows } from './team-row-query'
 import { assertTeamSlug } from './team-store'
 
@@ -157,6 +162,22 @@ export function findTeamMemberByTerminal(
   )
 }
 
+/** The member of a live team whose terminal is this pane, matched on the leaf a break-out keeps. */
+export function findTeamMemberByPaneKey(
+  this: OrchestrationDb,
+  paneKey: string
+): TeamMemberRow | undefined {
+  return queryTeamRows(
+    this.db,
+    TeamMemberRowSchema,
+    `SELECT * FROM team_members
+     WHERE pane_key IS NOT NULL AND ${TEAM_MEMBER_PANE_KEY_MATCH_SUFFIX_SQL} = ?
+       AND archived_at IS NULL
+       AND team_id IN (SELECT id FROM teams WHERE status != 'archived')`,
+    paneKeyMatchSuffix(paneKey)
+  ).find((member) => member.pane_key !== null && isEquivalentPaneKey(member.pane_key, paneKey))
+}
+
 export function updateTeamMember(
   this: OrchestrationDb,
   id: string,
@@ -263,6 +284,7 @@ export type TeamMemberStoreMethods = {
   getTeamManager: typeof getTeamManager
   listTeamMembers: typeof listTeamMembers
   findTeamMemberByTerminal: typeof findTeamMemberByTerminal
+  findTeamMemberByPaneKey: typeof findTeamMemberByPaneKey
   updateTeamMember: typeof updateTeamMember
   setTeamMemberDesiredState: typeof setTeamMemberDesiredState
   setTeamMemberPaused: typeof setTeamMemberPaused
@@ -280,6 +302,7 @@ export function attachTeamMemberStore(ctor: { prototype: object }): void {
     getTeamManager,
     listTeamMembers,
     findTeamMemberByTerminal,
+    findTeamMemberByPaneKey,
     updateTeamMember,
     setTeamMemberDesiredState,
     setTeamMemberPaused,

@@ -49,7 +49,7 @@ export async function initializeReadyRuntimeServices(): Promise<void> {
   const runtime = initializeMainProcessRuntime()
   initializeMainProcessAutomations()
   configureRuntimeServices(runtime)
-  startTeamBackgroundLoops(runtime)
+  state.disposeTeamBackgroundLoops = startTeamBackgroundLoops(runtime)
   await initializeMainProcessPlugins(runtime)
   state.starNag = new StarNagService(store, state.stats!)
   state.starNag.start()

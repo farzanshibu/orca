@@ -277,6 +277,40 @@ describe('orchestration team methods', () => {
     ).rejects.toThrow(/not running/)
   })
 
+  it('names who closing time waits on, and drops its untyped notes when cancelled', async () => {
+    const team = await seedTeam()
+    const michael = db.resolveTeamMemberSelector(team.id, 'michael')
+    const jim = db.resolveTeamMemberSelector(team.id, 'jim')
+    vi.spyOn(runtime, 'getTerminalAgentStatus').mockImplementation(async (handle) => ({
+      handle,
+      isRunningAgent: true,
+      status: 'idle'
+    }))
+    await expect(call('orchestration.teamShow', { team: team.id })).resolves.toMatchObject({
+      closing: null
+    })
+    // Michael's terminal cannot be found, which is not evidence that he stopped.
+    livePanes.delete('term_mgr')
+    db.setTeamMemberDesiredState(michael.id, 'running')
+    await expect(call('orchestration.teamClosingTime', { team: team.id })).resolves.toEqual({
+      closing: true,
+      notified: 1
+    })
+    await expect(call('orchestration.teamShow', { team: team.id })).resolves.toMatchObject({
+      closing: {
+        waiting_on: [
+          { member_id: michael.id, reason: 'unverifiable' },
+          { member_id: jim.id, reason: 'closing_note_queued' }
+        ]
+      }
+    })
+    await call('orchestration.teamClosingTime', { team: team.id, cancel: true })
+    expect(db.listPendingTeamQueue(jim.id)).toHaveLength(0)
+    await expect(call('orchestration.teamShow', { team: team.id })).resolves.toMatchObject({
+      closing: null
+    })
+  })
+
   it('binds a started manager as the team Run coordinator', async () => {
     const team = await seedTeam()
     const michael = db.resolveTeamMemberSelector(team.id, 'michael')

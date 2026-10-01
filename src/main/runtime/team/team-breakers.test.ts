@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OrchestrationDb } from '../orchestration/db'
 import type { TeamMemberRow } from '../orchestration/team-types'
 import { CLOSING_TIME_MESSAGE, TeamClosingTime, beginTeamClosingTime } from './team-closing-time'
+import type { TeamMemberTurnState } from './team-member-turn-state'
 import { TeamToolLoopBreaker } from './team-tool-loop-breaker'
 
 const PANE = 'tab_j:22222222-2222-4222-8222-222222222222'
@@ -72,7 +73,7 @@ describe('team breakers', () => {
   it('winds a team down: tell running members, stop them once quiet, then pause the team', async () => {
     const { team, jim } = seed()
     const live = new Set(['h_jim'])
-    let status = 'working'
+    let state: TeamMemberTurnState = 'working'
     const stopMember = vi.fn(async (member: TeamMemberRow) => {
       live.delete(member.terminal_handle ?? '')
     })
@@ -84,13 +85,13 @@ describe('team breakers', () => {
       getDb: () => db,
       resolveLiveHandle: (member) =>
         live.has(member.terminal_handle ?? '') ? member.terminal_handle : null,
-      getAgentStatus: async () => status,
+      getTurnState: async () => state,
       stopMember
     })
     await closing.tick()
     expect(stopMember).not.toHaveBeenCalled()
     db.settleTeamQueueItem(db.listPendingTeamQueue(jim.id)[0].id, { delivered: true })
-    status = 'idle'
+    state = 'idle'
     await closing.tick()
     await closing.tick()
     await closing.tick()

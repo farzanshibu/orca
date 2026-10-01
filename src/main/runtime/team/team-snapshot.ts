@@ -1,13 +1,10 @@
 import type { OrchestrationDb } from '../orchestration/db'
 import type { TeamMemberRow, TeamRow } from '../orchestration/team-types'
 import type { RpcContext } from '../rpc/core'
+import { listTeamClosingWaits } from './team-closing-time'
 import { resolveLiveTeamMemberHandle } from './team-member-lifecycle'
-
-/**
- * `unverifiable` rather than `exited` for a member meant to run whose terminal we cannot find:
- * after a restart or an SSH drop, absence here is not proof the agent stopped.
- */
-export type TeamMemberLiveness = 'live' | 'unverifiable' | 'stopped'
+import { teamMemberLiveness, type TeamMemberLiveness } from './team-member-liveness'
+import { readTeamMemberTurnState } from './team-member-turn-state'
 
 export type TeamMemberView = TeamMemberRow & {
   live_handle: string | null
@@ -29,7 +26,7 @@ export async function projectTeamMember(
   return {
     ...member,
     live_handle: handle,
-    liveness: handle ? 'live' : member.desired_state === 'running' ? 'unverifiable' : 'stopped',
+    liveness: teamMemberLiveness(member, handle),
     agent_status: handle ? await runtime.getAgentStatusForHandle(handle) : null
   }
 }
@@ -72,6 +69,19 @@ export async function buildTeamSnapshot(
   )
   return {
     team: publicTeam(team),
+    // Who the wind-down still waits on and why, so a stuck Closing Time names its cause.
+    closing: team.closing_at
+      ? {
+          waiting_on: await listTeamClosingWaits(
+            {
+              resolveLiveHandle: (member) => resolveLiveTeamMemberHandle(runtime, member),
+              getTurnState: (handle) => readTeamMemberTurnState(runtime, handle)
+            },
+            db,
+            team
+          )
+        }
+      : null,
     members,
     tasks: db.listTasksWithDispatch({ runId: team.run_id }).map((task) => ({
       ...task,

@@ -11,7 +11,7 @@ import { OrchestrationError } from '../../../orchestration/orchestration-error'
 import type { TeamRow } from '../../../orchestration/team-types'
 import { requireTeamOperator, resolveTeamCaller } from '../../../team/team-caller-authority'
 import { TEAM_WEBHOOK_DEFAULT_PORT, teamWebhookPath } from '../../../team/team-webhook-server'
-import { beginTeamClosingTime } from '../../../team/team-closing-time'
+import { beginTeamClosingTime, endTeamClosingTime } from '../../../team/team-closing-time'
 import { resolveLiveTeamMemberHandle } from '../../../team/team-member-lifecycle'
 import { defineMethod } from '../../core'
 import type { OrchestrationDb } from '../../../orchestration/db'
@@ -134,7 +134,7 @@ export const TEAM_AUTOMATION_METHODS = [
       const team = await resolveTeamFromParams(context, db, params)
       requireTeamOperator(resolveTeamCaller(context, db, team), 'call closing time')
       if (params.cancel) {
-        db.setTeamClosing(team.id, false)
+        endTeamClosingTime(db, team)
         return { closing: false, notified: 0 }
       }
       const notified = beginTeamClosingTime(db, team, (member) =>

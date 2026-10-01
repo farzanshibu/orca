@@ -125,6 +125,9 @@ function installWillQuitHandler(): void {
     // Why: an agent still working at quit gets no terminating hook, so stats.flushAsync() closes those sessions out synchronously (only the write is deferred) — otherwise their duration is lost.
     state.starNag?.stop()
     state.automations?.stop()
+    // Why before the hook server and PTYs stop: a team loop mid-pass would type into a dying pane.
+    state.disposeTeamBackgroundLoops?.()
+    state.disposeTeamBackgroundLoops = null
     // Why: plugin hosts are forked children; dispose sends shutdown and
     // escalates to SIGKILL so they cannot outlive the app. The promise joins
     // the teardown barrier below — quitting before it resolves would let

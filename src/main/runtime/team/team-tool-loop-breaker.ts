@@ -1,5 +1,4 @@
 import type { OrchestrationDb } from '../orchestration/db'
-import { isEquivalentPaneKey } from '../orchestration/db/pane-key-match'
 import type { TeamMemberRow } from '../orchestration/team-types'
 import { tripTeamBreaker, type TeamBreakerEffects } from './team-breaker'
 
@@ -31,7 +30,7 @@ export class TeamToolLoopBreaker {
       return
     }
     const db = this.getDb()
-    const member = this.findMember(db, event.paneKey)
+    const member = db.findTeamMemberByPaneKey(event.paneKey)
     if (!member || member.paused_at) {
       return
     }
@@ -63,17 +62,5 @@ export class TeamToolLoopBreaker {
       reason: 'tool_loop',
       detail: `${event.toolName} repeated after a steer`
     })
-  }
-
-  private findMember(db: OrchestrationDb, paneKey: string): TeamMemberRow | undefined {
-    for (const team of db.listTeams()) {
-      const member = db
-        .listTeamMembers(team.id)
-        .find((candidate) => candidate.pane_key && isEquivalentPaneKey(candidate.pane_key, paneKey))
-      if (member) {
-        return member
-      }
-    }
-    return undefined
   }
 }

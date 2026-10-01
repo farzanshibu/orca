@@ -60,6 +60,9 @@ export class TeamWebhookServer {
   ) {}
 
   start(intervalMs = 30_000): void {
+    if (this.timer) {
+      return
+    }
     this.sync()
     this.timer = setInterval(() => this.sync(), intervalMs)
     this.timer.unref?.()
@@ -70,8 +73,18 @@ export class TeamWebhookServer {
       clearInterval(this.timer)
       this.timer = null
     }
-    this.server?.close()
+    this.closeServer()
+  }
+
+  private closeServer(): void {
+    const server = this.server
     this.server = null
+    if (!server) {
+      return
+    }
+    server.close()
+    // close() alone waits on keep-alive sockets, which would hold the port past a quit.
+    server.closeAllConnections()
   }
 
   private sync(): void {
@@ -82,13 +95,14 @@ export class TeamWebhookServer {
       const server = createServer((req, res) => void this.handle(req, res))
       server.on('error', (error) => {
         console.warn('[team-webhooks] listener failed:', error)
-        this.server = null
+        if (this.server === server) {
+          this.server = null
+        }
       })
       server.listen(this.port, '127.0.0.1')
       this.server = server
     } else if (!wanted && this.server) {
-      this.server.close()
-      this.server = null
+      this.closeServer()
     }
   }
 

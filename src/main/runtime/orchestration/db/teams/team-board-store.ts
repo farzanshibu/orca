@@ -85,24 +85,30 @@ export function enqueueTeamMemberMessage(
   memberId: string,
   text: string,
   /** What queued it, shown in the feed: operator, enrich, goal, mission:<name>, webhook, closing, compact. */
-  source = 'operator'
+  source = 'operator',
+  /** `front` puts it ahead of everything still pending. */
+  placement: 'back' | 'front' = 'back'
 ): TeamQueueItem {
   this.requireTeamMember(memberId)
   if (!text.trim()) {
     throw new OrchestrationError('invalid_argument', 'A queued message needs text.')
   }
-  const last = queryTeamRow(
+  const edge = queryTeamRow(
     this.db,
     z.object({ position: z.number().nullable() }),
-    'SELECT MAX(position) AS position FROM team_member_queue WHERE member_id = ?',
+    placement === 'front'
+      ? `SELECT MIN(position) AS position FROM team_member_queue
+         WHERE member_id = ? AND delivered_at IS NULL AND failed_reason IS NULL`
+      : 'SELECT MAX(position) AS position FROM team_member_queue WHERE member_id = ?',
     memberId
   )
+  const position = placement === 'front' ? (edge?.position ?? 1) - 1 : (edge?.position ?? 0) + 1
   const id = generateId('queue')
   this.db
     .prepare(
       'INSERT INTO team_member_queue (id, member_id, text, position, source) VALUES (?, ?, ?, ?, ?)'
     )
-    .run(id, memberId, text, (last?.position ?? 0) + 1, source)
+    .run(id, memberId, text, position, source)
   return this.requireTeamQueueItem(id)
 }
 

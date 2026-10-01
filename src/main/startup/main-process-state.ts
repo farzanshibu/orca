@@ -63,6 +63,10 @@ function createInitialProfileStateAdmission(): ProfileStateRuntimeAdmission | un
   return undefined
 }
 
+function createInitialTeamBackgroundLoopsDisposer(): (() => void) | null {
+  return null
+}
+
 /** Mutable composition-root state shared by startup, window, serve, and quit phases. */
 export const mainProcessState = {
   mainWindow: null as BrowserWindow | null,
@@ -103,6 +107,7 @@ export const mainProcessState = {
   watcherShutdownPromise: null as Promise<void> | null,
   watcherShutdownDone: false,
   automations: null as AutomationService | null,
+  disposeTeamBackgroundLoops: createInitialTeamBackgroundLoopsDisposer(),
   pluginService: null as PluginService | null,
   pluginKillListService: null as PluginKillListService | null,
   pluginMarketplaceService: null as PluginMarketplaceService | null,
