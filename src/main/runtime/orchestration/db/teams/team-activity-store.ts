@@ -123,6 +123,22 @@ export function attributeTeamActivityMessage(
     .run(from.party, from.memberId ?? null, messageId)
 }
 
+/** Says who resolved a task's gate when it was not the Run's manager, such as the operator's inbox. */
+export function attributeTeamGateResolution(
+  this: OrchestrationDb,
+  taskId: string,
+  from: TeamActivityParticipant
+): void {
+  this.db
+    .prepare(
+      `UPDATE team_activity SET from_party = ?, from_member_id = ?
+       WHERE sequence = (
+         SELECT MAX(sequence) FROM team_activity WHERE kind = 'gate_resolved' AND task_id = ?
+       )`
+    )
+    .run(from.party, from.memberId ?? null, taskId)
+}
+
 /**
  * Drops activity older than `maxAgeDays` and beyond the newest `maxRowsPerTeam`, and remembers
  * how far it pruned so a poll cursor from before then restarts instead of silently skipping.
@@ -171,6 +187,7 @@ export type TeamActivityStoreMethods = {
   listTeamActivity: typeof listTeamActivity
   getLatestTeamActivitySequence: typeof getLatestTeamActivitySequence
   attributeTeamActivityMessage: typeof attributeTeamActivityMessage
+  attributeTeamGateResolution: typeof attributeTeamGateResolution
   pruneTeamActivity: typeof pruneTeamActivity
 }
 
@@ -180,6 +197,7 @@ export function attachTeamActivityStore(ctor: { prototype: object }): void {
     listTeamActivity,
     getLatestTeamActivitySequence,
     attributeTeamActivityMessage,
+    attributeTeamGateResolution,
     pruneTeamActivity
   })
 }

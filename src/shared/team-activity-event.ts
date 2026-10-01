@@ -4,8 +4,9 @@
  * does not know as a plain row rather than dropping it.
  *
  * Kinds today: message, delivery, task_created, task_assigned, task_status, task_settled,
- * dispatch_started, dispatch_failed, goal_created, goal_review, goal_closed, hire_proposed,
- * hire_decided, member_added, member_state, member_paused, member_resumed.
+ * dispatch_started, dispatch_failed, goal_created, goal_review, goal_closed, gate_opened,
+ * gate_resolved, hire_proposed, hire_decided, member_added, member_state, member_paused,
+ * member_resumed.
  * Parties today: member, operator, external, system, agent, team.
  */
 export type TeamActivityEvent = {

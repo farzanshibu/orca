@@ -91,7 +91,9 @@ export const TEAM_INBOX_METHODS = [
           `Gate ${params.id} is already ${gate.status}.`
         )
       }
-      return { gate: db.resolveGate(gate.id, params.resolution) }
+      const resolved = db.resolveGate(gate.id, params.resolution)
+      db.attributeTeamGateResolution(gate.task_id, { party: 'operator' })
+      return { gate: resolved }
     }
   })
 ]

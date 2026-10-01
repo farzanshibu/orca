@@ -142,6 +142,77 @@ describe('team activity feed', () => {
     expect(events[0].sequence).toBe(db.getLatestTeamActivitySequence(team.id))
   })
 
+  it('keeps two alike messages to the same member as two events', () => {
+    for (const _ of [1, 2]) {
+      db.insertMessage({
+        from: 'term_jim',
+        to: `run:${team.run_id}`,
+        subject: 'Re: build',
+        body: 'Still red.',
+        type: 'status',
+        threadId: 'thread_2',
+        runId: team.run_id
+      })
+    }
+    expect(feed()).toHaveLength(2)
+  })
+
+  it('never cuts a group send in two at the page limit', () => {
+    db.insertMessage({
+      from: 'term_jim',
+      to: `run:${team.run_id}`,
+      subject: 'first',
+      type: 'status',
+      runId: team.run_id
+    })
+    db.insertMessages(
+      ['term_jim', 'term_pam'].map((to) => ({
+        from: 'term_mgr',
+        to,
+        subject: 'Standup in five',
+        type: 'status' as const,
+        threadId: 'thread_1',
+        runId: team.run_id
+      }))
+    )
+    const page = readTeamActivityPage(db, db.requireTeam(team.id), {
+      afterSequence: baseline,
+      limit: 2
+    })
+    expect(page.events.map((event) => event.to.member_ids)).toEqual([
+      [michael.id],
+      [jim.id, pam.id]
+    ])
+    expect(page.hasMore).toBe(false)
+  })
+
+  it('records a gate being opened and who resolved it', () => {
+    const task = db.createTask({ runId: team.run_id, spec: 'Pick a database', taskTitle: 'DB' })
+    dispatchTo(task.id, 'term_jim', JIM_PANE)
+    const gate = db.createGate({ taskId: task.id, question: 'Postgres or SQLite?' })
+    db.resolveGate(gate.id, 'Postgres')
+    const gates = () => feed().filter((event) => event.kind.startsWith('gate_'))
+    expect(gates()).toMatchObject([
+      {
+        kind: 'gate_opened',
+        from: { party: 'member', member_id: jim.id },
+        to: { party: 'operator' },
+        subject: 'Postgres or SQLite?',
+        task_ref: 'pla-1'
+      },
+      {
+        kind: 'gate_resolved',
+        status: 'resolved',
+        from: { party: 'member', member_id: michael.id },
+        to: { member_ids: [jim.id] },
+        body_preview: 'Postgres'
+      }
+    ])
+    // The operator's own resolve goes through the same store call, then says who it really was.
+    db.attributeTeamGateResolution(task.id, { party: 'operator' })
+    expect(gates()[1]).toMatchObject({ from: { party: 'operator', member_id: null } })
+  })
+
   it('numbers a task when it is filed and follows it through dispatch and completion', () => {
     const task = db.createTask({ runId: team.run_id, spec: 'Build the API', taskTitle: 'API' })
     expect(db.getTeamTaskMeta(task.id)).toMatchObject({ number: 1, kind: 'task' })
@@ -247,6 +318,12 @@ describe('team activity feed', () => {
     expect(afterPrune.events.map((event) => event.subject)).toEqual(['three'])
     // Without a cursor the newest events come back, oldest first.
     expect(readTeamActivityPage(db, db.requireTeam(team.id), {}).events).toHaveLength(1)
+    // A cursor past the newest row came from somewhere else; it restarts rather than waiting.
+    const ahead = readTeamActivityPage(db, db.requireTeam(team.id), {
+      afterSequence: db.getLatestTeamActivitySequence(team.id) + 100
+    })
+    expect(ahead).toMatchObject({ reset: true, hasMore: false })
+    expect(ahead.events.map((event) => event.subject)).toEqual(['three'])
   })
 })
 
@@ -267,7 +344,7 @@ describe('team activity triggers', () => {
       db.db.exec('ALTER TABLE dispatch_contexts DROP COLUMN creator_pane_key')
       db.db.exec('ALTER TABLE dispatch_contexts ADD COLUMN creator_pane_key TEXT')
       db.createTeam({ repoId: 'repo_1', name: 'Platform' })
-      expect(triggerCount(db)).toBe(12)
+      expect(triggerCount(db)).toBe(14)
     } finally {
       db.close()
     }
