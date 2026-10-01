@@ -1,6 +1,5 @@
-import { getAppEnvironment } from '../../../shared/app-environment'
+import { getRepoKind } from '../../../shared/repo-kind'
 import { isTuiAgent } from '../../../shared/tui-agent-config'
-import { resolveTerminalOrchestrationCliCommand } from '../orchestration/cli-command'
 import type { OrchestrationDb } from '../orchestration/db'
 import { OrchestrationError } from '../orchestration/orchestration-error'
 import type { TeamMemberRow, TeamRow } from '../orchestration/team-types'
@@ -8,8 +7,10 @@ import type { RpcContext } from '../rpc/core'
 import { deliverTerminalAgentLaunchPrompt } from '../rpc/methods/agent-launch-terminal-prompt'
 import { resolveWorkerLaunchPreferences } from '../rpc/methods/orchestration/worker/worker-launch-preferences'
 import { buildTeamMemberBrief } from './team-role-brief'
+import { carryTeamMemberDirectMail } from './team-member-direct-mail'
 import { teamNotesRoot } from './team-notes'
 import { ensureTeamMemberWorkspace, writeTeamMemberWorkspaceFiles } from './team-member-workspace'
+import { teamCliCommand } from './team-workspace-facts'
 
 /** Refuses an agent or model/effort pair the host could not launch, before anything is created. */
 export function assertTeamMemberLaunchable(fields: {
@@ -58,12 +59,7 @@ export async function startTeamMember(args: {
     throw new OrchestrationError('invalid_argument', `Unknown agent "${agent}".`)
   }
   const repo = await context.runtime.showRepo(`id:${team.repo_id}`)
-  const cli = resolveTerminalOrchestrationCliCommand({
-    connectionId: repo.connectionId ?? null,
-    isWsl: null,
-    worktreeId: '',
-    runtimeCliCommand: getAppEnvironment().isPackaged() ? undefined : 'orca-dev'
-  })
+  const cli = teamCliCommand(repo)
   // Reuse the member's own workspace so a restart keeps its branch and uncommitted work.
   const workspace = await ensureTeamMemberWorkspace({ context, repo, team, member })
   db.bindTeamMemberTerminal(member.id, {
@@ -77,7 +73,8 @@ export async function startTeamMember(args: {
     member,
     roster: db.listTeamMembers(team.id),
     cli,
-    notesRoot: teamNotesRoot(repo, team)
+    notesRoot: teamNotesRoot(repo, team),
+    workspaceKind: getRepoKind(repo)
   })
   const launch = resolveWorkerLaunchPreferences({
     agent,
@@ -102,6 +99,13 @@ export async function startTeamMember(args: {
   if (member.is_manager === 1 && paneKey) {
     bindTeamManagerRun(context.runtime, db, team, terminal.handle, paneKey)
   }
+  carryTeamMemberDirectMail({
+    runtime: context.runtime,
+    db,
+    team,
+    member,
+    handle: terminal.handle
+  })
   await deliverTerminalAgentLaunchPrompt({
     runtime: context.runtime,
     handle: terminal.handle,

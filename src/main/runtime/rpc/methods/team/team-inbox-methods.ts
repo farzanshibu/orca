@@ -27,7 +27,7 @@ export const TEAM_INBOX_METHODS = [
       const { runtime } = context
       const db = runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), "answer the team's questions")
+      requireTeamOperator(await resolveTeamCaller(context, db, team), "answer the team's questions")
       const question = db.getQuestion(params.id)
       if (!question || question.run_id !== team.run_id) {
         throw new OrchestrationError(
@@ -77,7 +77,7 @@ export const TEAM_INBOX_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), "resolve the team's gates")
+      requireTeamOperator(await resolveTeamCaller(context, db, team), "resolve the team's gates")
       const gate = db.getGate(params.id)
       if (!gate || gate.run_id !== team.run_id) {
         throw new OrchestrationError(

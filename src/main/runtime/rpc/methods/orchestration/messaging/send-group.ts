@@ -1,9 +1,11 @@
 import type { MessagePriority, MessageType, OrchestrationDb } from '../../../../orchestration/db'
 import type { OrcaRuntimeService } from '../../../../orca-runtime'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
-import { resolveGroupAddress, type TeamGroupMember } from '../../../../orchestration/groups'
+import { isTeamGroupAddress, resolveGroupAddress } from '../../../../orchestration/groups'
 import { isEquivalentPaneKey } from '../../../../orchestration/db/pane-key-match'
+import { findTeamMemberForTerminal } from '../../../../team/team-member-terminal'
 import { resolveBareOrchestrationRecipient } from './recipient-routing'
+import { sendTeamGroupMessage } from './send-team-group'
 import {
   listAddressableStructuredWorkers,
   type OrchestrationAddressableAgent
@@ -144,6 +146,30 @@ export async function sendGroupMessage(args: {
     return runId
   }
 
+  if (isTeamGroupAddress(groupAddress)) {
+    // Why the roster first: a standing member belongs to its team between tasks too, when it
+    // holds neither a Run nor a Dispatch.
+    const senderMember = findTeamMemberForTerminal(db, from, senderPaneKey)
+    const team = senderMember
+      ? db.getTeam(senderMember.team_id)
+      : db.getTeamByRunId(resolveAudienceRunId())
+    if (team) {
+      return sendTeamGroupMessage({
+        params,
+        runtime,
+        db,
+        from,
+        groupAddress,
+        team,
+        senderMember,
+        senderPaneKey,
+        explicitRunId,
+        revalidateLegacyCoordinator,
+        recordMutationReceipt
+      })
+    }
+  }
+
   // `@worktree:<id>` names one workspace explicitly; every other group means the sender's Run.
   const worktreeGroup = groupAddress.toLowerCase().startsWith('@worktree:')
   let audienceRunId = worktreeGroup ? undefined : resolveAudienceRunId()
@@ -171,17 +197,6 @@ export async function sendGroupMessage(args: {
           agents,
           warnings: groupWarnings
         })
-  // Only team addresses need the roster; other groups never touch team tables.
-  const teamGroup = /^@(role|member):/i.test(groupAddress)
-  const team = teamGroup && audienceRunId ? db.getTeamByRunId(audienceRunId) : undefined
-  const teamMembers: TeamGroupMember[] = team
-    ? db.listTeamMembers(team.id).map((member) => ({
-        slug: member.slug,
-        roleSlug: member.role_slug,
-        terminalHandle: member.terminal_handle,
-        paneKey: member.pane_key
-      }))
-    : []
   // Read up front: a structured worker's status comes from its journal, which may need opening.
   const statuses =
     groupAddress.toLowerCase() === '@idle'
@@ -198,8 +213,7 @@ export async function sendGroupMessage(args: {
     groupAddress,
     from,
     candidates,
-    (handle: string) => statuses.get(handle) ?? null,
-    teamMembers
+    (handle: string) => statuses.get(handle) ?? null
   )
   if (handles.length === 0) {
     // Preserve the recovery addresses even when every worker was skipped.

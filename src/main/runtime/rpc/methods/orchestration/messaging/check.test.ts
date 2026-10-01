@@ -5,6 +5,7 @@ import type { OrchestrationDb } from '../../../../orchestration/db'
 import { reconcileLifecycleMessage } from '../../../../orchestration/lifecycle-reconciliation'
 import type { OrcaRuntimeService } from '../../../../orca-runtime'
 import { createRootDispatch } from '../../../../orchestration/db/root-dispatch-test-fixture'
+import { seedTeamRoster } from './team-roster-test-fixture'
 
 describe('orchestration RPC methods', () => {
   const h = createOrchestrationRpcHarness()
@@ -622,6 +623,34 @@ describe('orchestration RPC methods', () => {
       })
       // The stranded row must survive the refusal so a rebound consumer can still read it.
       expect(db.getUnreadMessages('term_gone')).toHaveLength(1)
+    })
+
+    it('fences a terminal after a failed Dispatch unless it is a standing team member', async () => {
+      setup(false)
+      const roster = seedTeamRoster(db, runtime)
+      const failDispatchOn = (handle: string): void => {
+        const task = db.createTask({ spec: `work for ${handle}`, runId: roster.team.run_id })
+        const dispatch = createRootDispatch(db, task.id, handle, roster.livePanes.get(handle))
+        db.failDispatch(dispatch.id, 'agent crashed')
+      }
+      failDispatchOn('term_jim')
+      failDispatchOn('term_stranger')
+      db.insertMessage({
+        from: 'term_pam',
+        to: 'term_jim',
+        subject: 'still there?',
+        runId: roster.team.run_id
+      })
+
+      // The member's pane outlives the Attempt, so its mailbox stays open.
+      await expect(call('orchestration.check', { terminal: 'term_jim' })).resolves.toMatchObject({
+        count: 1,
+        messages: [{ subject: 'still there?' }]
+      })
+      // A worker on no roster lost its Dispatch and still has to be told to stop.
+      await expect(
+        call('orchestration.check', { terminal: 'term_stranger' })
+      ).rejects.toMatchObject({ code: 'consumer_fenced' })
     })
 
     it('still inspects a stale handle with --peek and --all', async () => {

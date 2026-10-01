@@ -137,6 +137,7 @@ export type SendRecipientWarning = {
     | 'recipient_unreachable'
     | 'recipient_ambiguous'
     | 'recipient_run_mismatch'
+    | 'thread_escalated'
   recipient: string
   message: string
 }

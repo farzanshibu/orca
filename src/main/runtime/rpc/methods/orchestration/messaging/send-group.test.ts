@@ -1,10 +1,16 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 import type { RpcContext } from '../../../core'
 import { createOrchestrationRpcHarness } from '../rpc-test-harness'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import type { OrcaRuntimeService } from '../../../../orca-runtime'
 import type { RuntimeTerminalSummary } from '../../../../../../shared/runtime-types'
 import { createRootDispatch } from '../../../../orchestration/db/root-dispatch-test-fixture'
+import {
+  seedTeamRoster,
+  TEAM_MEMBER_PANES,
+  type SeededTeamRoster
+} from './team-roster-test-fixture'
 
 // Group addresses mean the sender's Run. The host-wide meaning they had before let one
 // coordinator's `@all` reach every terminal in every open project on the machine.
@@ -628,4 +634,159 @@ describe('orchestration.send group addresses', () => {
       expect(result.messages.map((m) => m.to_handle)).toEqual([`dispatch:${dispatch.id}`])
     }
   )
+})
+
+// `@member:<slug>` and `@role:<slug>` mean the sender's team. They used to mean "members with a
+// live Dispatch in the sender's Run", so an idle member could neither send nor be reached.
+describe('orchestration.send team addresses', () => {
+  const h = createOrchestrationRpcHarness()
+  let db: OrchestrationDb
+  let runtime: OrcaRuntimeService
+  let ctx: RpcContext
+  let roster: SeededTeamRoster
+
+  const TeamReceipt = z.object({
+    messages: z.array(z.object({ to_handle: z.string(), run_id: z.string() })),
+    recipients: z.number(),
+    warnings: z
+      .array(z.object({ code: z.string(), recipient: z.string(), message: z.string() }))
+      .optional()
+  })
+
+  beforeEach(() => {
+    ;({ db, runtime, ctx } = h.setup(false))
+    roster = seedTeamRoster(db, runtime)
+  })
+
+  afterEach(() => {
+    h.cleanup()
+  })
+
+  async function send(from: string, to: string, extra: Record<string, unknown> = {}) {
+    return TeamReceipt.parse(
+      await h.call('orchestration.send', { from, to, subject: 'heads up', ...extra }, ctx)
+    )
+  }
+
+  /** Gives `handle` a live Dispatch in the team's Run. */
+  function busy(handle: keyof typeof TEAM_MEMBER_PANES): string {
+    const task = db.createTask({ spec: `work for ${handle}`, runId: roster.team.run_id })
+    return createRootDispatch(db, task.id, handle, TEAM_MEMBER_PANES[handle]).id
+  }
+
+  it('lets a member with no Run and no Dispatch address its team', async () => {
+    const dispatch = busy('term_pam')
+
+    const result = await send('term_jim', '@role:engineer')
+
+    expect(result.messages.map((m) => m.to_handle)).toEqual([`dispatch:${dispatch}`])
+    expect(result.warnings).toBeUndefined()
+  })
+
+  it('reaches a busy member at its Dispatch, an idle one at its own handle, the manager at the Run', async () => {
+    const dispatch = busy('term_pam')
+
+    const engineers = await send('term_mgr', '@role:engineer')
+    const manager = await send('term_jim', '@role:manager')
+
+    expect(engineers.messages.map((m) => m.to_handle).sort()).toEqual(
+      [`dispatch:${dispatch}`, 'term_jim'].sort()
+    )
+    expect(manager.messages.map((m) => m.to_handle)).toEqual([`run:${roster.team.run_id}`])
+    // Filed under the team's Run, which is what the activity feed and the team log read.
+    expect(
+      [...engineers.messages, ...manager.messages].every((m) => m.run_id === roster.team.run_id)
+    ).toBe(true)
+    expect(engineers.warnings).toBeUndefined()
+  })
+
+  it('keeps mail for the manager when its terminal is down', async () => {
+    roster.livePanes.delete('term_mgr')
+
+    const result = await send('term_jim', '@member:michael')
+
+    expect(result.messages.map((m) => m.to_handle)).toEqual([`run:${roster.team.run_id}`])
+  })
+
+  it('answers a stopped member with a warning, not an error', async () => {
+    const result = await send('term_jim', '@member:kevin')
+
+    expect(result).toMatchObject({
+      recipients: 0,
+      messages: [],
+      warnings: [
+        {
+          code: 'recipient_unreachable',
+          recipient: '@member:kevin',
+          message: expect.stringContaining('is stopped')
+        }
+      ]
+    })
+  })
+
+  it('never calls a member it cannot find stopped', async () => {
+    roster.livePanes.delete('term_oscar')
+
+    const result = await send('term_jim', '@role:reviewer')
+
+    // Oscar may still be running, so his mail waits under the handle his agent reads.
+    expect(result.messages.map((m) => m.to_handle)).toEqual(['term_oscar'])
+    expect(result.warnings?.map((warning) => warning.recipient)).toEqual([
+      '@member:oscar',
+      '@member:kevin'
+    ])
+    expect(result.warnings?.[0]?.message).toMatch(
+      /cannot be reached right now.*may still be running/
+    )
+  })
+
+  it('shows the mail on the team feed with both members named', async () => {
+    const before = db.getLatestTeamActivitySequence(roster.team.id)
+
+    await send('term_jim', '@member:pam', { body: 'the API changed' })
+
+    expect(
+      db
+        .listTeamActivity(roster.team.id, { afterSequence: before, limit: 10 })
+        .filter((row) => row.kind === 'message')
+    ).toMatchObject([
+      {
+        from_party: 'member',
+        from_member_id: roster.member('jim').id,
+        to_party: 'member',
+        to_member_id: roster.member('pam').id,
+        subject: 'heads up'
+      }
+    ])
+  })
+
+  it('queues one wake-up for an idle member however much mail arrives', async () => {
+    await send('term_jim', '@member:pam')
+    await send('term_mgr', '@member:pam')
+
+    const queue = db.listPendingTeamQueue(roster.member('pam').id)
+    expect(queue).toHaveLength(1)
+    expect(queue[0]).toMatchObject({ source: 'mail' })
+    expect(queue[0]?.text).toContain('@member:jim sent you "heads up"')
+    // The manager's Run mailbox is pointer-delivered, so it needs no typed wake-up.
+    await send('term_jim', '@role:manager')
+    expect(db.listPendingTeamQueue(roster.member('michael').id)).toHaveLength(0)
+  })
+
+  it('rejects an address nobody on the roster answers to, and one naming only the sender', async () => {
+    await expect(send('term_jim', '@member:dwight')).rejects.toMatchObject({
+      code: 'terminal_not_found',
+      message: expect.stringContaining('@member:jim')
+    })
+    await expect(send('term_jim', '@member:jim')).rejects.toMatchObject({
+      code: 'terminal_not_found'
+    })
+    expect(db.getInbox(100)).toHaveLength(0)
+  })
+
+  it('still refuses team addresses from a terminal that is in no team and no Run', async () => {
+    await expect(send('term_stranger', '@role:engineer')).rejects.toMatchObject({
+      code: 'invalid_argument'
+    })
+  })
 })

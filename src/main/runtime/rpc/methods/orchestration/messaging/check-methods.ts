@@ -8,6 +8,7 @@ import { checkDirectMailbox } from './check-direct'
 import { orchestrationSkillRecoveryData } from '../../../../../../shared/orchestration-rpc-contract'
 import { hasRunBindingKey } from '../../../../orchestration/orchestration-caller-identity'
 import { orchestrationCallerIdentity } from '../runs/run-scope'
+import { findTeamMemberForTerminal } from '../../../../team/team-member-terminal'
 import {
   callerHoldsDispatchPane,
   dispatchFenced,
@@ -98,7 +99,13 @@ export const ORCHESTRATION_CHECK_METHODS = [
       // caller whose Attempt moved on has to be told rather than handed an empty direct mailbox.
       // This outranks the pane guard: a paneless loser cannot run-use anyway, it has to stop.
       const settledDispatch = consumingCheck ? db.getLatestDispatchForTerminal(handle) : undefined
-      if (settledDispatch && isSupersededDispatch(settledDispatch)) {
+      // Why members are exempt: a standing member's pane outlives every Attempt, so one failed
+      // task must not close the mailbox its teammates and its next task reach it through.
+      if (
+        settledDispatch &&
+        isSupersededDispatch(settledDispatch) &&
+        !findTeamMemberForTerminal(db, handle, paneKey)
+      ) {
         throw dispatchFenced()
       }
       // Why: a consuming check on a handle with no live pane and no Dispatch can never see

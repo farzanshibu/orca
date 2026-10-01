@@ -2,7 +2,12 @@ import { defineMethod } from '../../../core'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { isGroupAddress } from '../../../../orchestration/groups'
 import { orchestrationSkillRecoveryData } from '../../../../../../shared/orchestration-rpc-contract'
-import { SendParams, isWorkerReportOutcome, parseRemoteWorkerPayload } from '../schemas'
+import {
+  SendParams,
+  isDispatchMutationMessageType,
+  isWorkerReportOutcome,
+  parseRemoteWorkerPayload
+} from '../schemas'
 import { resolveMessageRun } from '../routing'
 import {
   assertDispatchMailboxDeliverable,
@@ -20,6 +25,12 @@ import { sendRemoteMessage } from './send-remote'
 import { sendPointToPointMessage } from './send-point-to-point'
 import { sendGroupMessage } from './send-group'
 import { sendFederatedControlMail } from './send-control-mail'
+import {
+  holdTeamPeerMail,
+  nudgeTeamPeerAboutMail,
+  resolveTeamPeerMail,
+  type TeamPeerMail
+} from './team-peer-mail'
 import { orchestrationCallerIdentity } from '../runs/run-scope'
 
 export const ORCHESTRATION_SEND_METHODS = [
@@ -131,12 +142,20 @@ export const ORCHESTRATION_SEND_METHODS = [
 
       const sendWarnings: SendRecipientWarning[] = []
       let messageRunId = routing.run?.id
+      let teamPeers: TeamPeerMail | undefined
       if (!isGroupAddress(to) && !to.startsWith('run:') && !to.startsWith('dispatch:')) {
+        teamPeers = resolveTeamPeerMail(
+          db,
+          { handle: from, paneKey: senderPaneKey },
+          { handle: to, paneKey: runtime.getLiveTerminalPaneKey(to) }
+        )
         const recipient = resolveBareOrchestrationRecipient({
           runtime,
           db,
           handle: to,
-          senderRunId: routing.run?.id,
+          // Why the team's Run: mail between two members filed anywhere else never reaches the
+          // team's feed or log, and an idle member holds no Run of its own to file it under.
+          senderRunId: teamPeers?.team.run_id ?? routing.run?.id,
           explicitRunId: params.run
         })
         if (!recipient.ok) {
@@ -144,7 +163,11 @@ export const ORCHESTRATION_SEND_METHODS = [
         }
         to = recipient.to
         messageRunId = recipient.runId
-        if (recipient.warning) {
+        // A member's own-handle mail follows it across a restart, so it is not terminal-only.
+        if (
+          recipient.warning &&
+          !(teamPeers && recipient.warning.code === 'legacy_terminal_recipient')
+        ) {
           sendWarnings.push(recipient.warning)
         }
       }
@@ -190,7 +213,23 @@ export const ORCHESTRATION_SEND_METHODS = [
         if (federatedControl !== undefined) {
           return federatedControl
         }
-        return sendPointToPointMessage({
+        const held = isDispatchMutationMessageType(params.type)
+          ? undefined
+          : holdTeamPeerMail({
+              runtime,
+              db,
+              peers: teamPeers,
+              threadId: params.threadId,
+              from,
+              senderPaneKey,
+              subject: params.subject,
+              body: params.body,
+              recordMutationReceipt
+            })
+        if (held) {
+          return held
+        }
+        const receipt = sendPointToPointMessage({
           params,
           runtime,
           db,
@@ -210,6 +249,8 @@ export const ORCHESTRATION_SEND_METHODS = [
           markWorkerDoneMutationEffectFree,
           withSendWarnings
         })
+        nudgeTeamPeerAboutMail(runtime, db, teamPeers, { to, from, subject: params.subject })
+        return receipt
       }
       return sendGroupMessage({
         params,

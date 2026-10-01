@@ -15,18 +15,22 @@ import { resolveOrchestrationTerminalHandle } from './terminal-identity'
 export const ORCHESTRATION_INBOX_HANDLERS: Record<string, CommandHandler> = {
   'orchestration reply': async ({ flags, client, cwd, json }) => {
     const from = await resolveOrchestrationTerminalHandle(flags, cwd, client, 'from')
-    const result = await callOrchestrationMutation<{ message: { id: string } }>(
-      client,
-      flags,
-      'orchestration.reply',
-      {
-        id: getRequiredStringFlag(flags, 'id'),
-        body: getRequiredStringFlag(flags, 'body'),
-        run: getOptionalStringFlag(flags, 'run'),
-        from
-      }
+    const result = await callOrchestrationMutation<{
+      message: { id: string }
+      warnings?: { message: string }[]
+    }>(client, flags, 'orchestration.reply', {
+      id: getRequiredStringFlag(flags, 'id'),
+      body: getRequiredStringFlag(flags, 'body'),
+      run: getOptionalStringFlag(flags, 'run'),
+      from
+    })
+    // A reply Orca redirected, such as past a team thread's reply cap, says so in a warning.
+    printResult(result, json, (value) =>
+      [
+        `Replied ${value.message.id}`,
+        ...(value.warnings ?? []).map((warning) => `Warning: ${warning.message}`)
+      ].join('\n')
     )
-    printResult(result, json, (value) => `Replied ${value.message.id}`)
   },
 
   'orchestration inbox': async ({ flags, client, json }) => {

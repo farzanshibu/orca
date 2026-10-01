@@ -65,7 +65,7 @@ export const TEAM_MEMORY_METHODS = [
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
       // Members edit the files directly; this path is the operator's editor.
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'edit notes through Orca')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'edit notes through Orca')
       const repo = await context.runtime.showRepo(`id:${team.repo_id}`)
       const path = teamNoteFile(teamNotesRoot(repo, team), requireNotePath(params.note))
       await teamHostFilesFor(repo).write(path, params.content)

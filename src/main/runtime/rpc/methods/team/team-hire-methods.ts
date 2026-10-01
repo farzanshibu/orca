@@ -3,7 +3,11 @@ import {
   TeamHireProposeParams
 } from '../../../../../shared/rpc-contract/orchestration-team-params'
 import { OrchestrationError } from '../../../orchestration/orchestration-error'
-import { requireTeamOperator, resolveTeamCaller } from '../../../team/team-caller-authority'
+import {
+  isTeamOperatorOrManager,
+  requireTeamOperator,
+  resolveTeamCaller
+} from '../../../team/team-caller-authority'
 import { assertTeamMemberLaunchable, startTeamMember } from '../../../team/team-member-lifecycle'
 import { projectTeamMember } from '../../../team/team-snapshot'
 import { defineMethod } from '../../core'
@@ -27,9 +31,9 @@ export const TEAM_HIRE_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      const caller = resolveTeamCaller(context, db, team)
+      const caller = await resolveTeamCaller(context, db, team)
       // Why only the manager: workers asking to grow the team go through the manager first.
-      if (caller.kind === 'member' && !caller.isManager) {
+      if (!isTeamOperatorOrManager(caller)) {
         throw new OrchestrationError(
           'consumer_fenced',
           `Only the manager of ${team.name} can propose hires; ask it instead.`
@@ -57,7 +61,7 @@ export const TEAM_HIRE_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'approve or reject hires')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'approve or reject hires')
       const pending = db.requireTeamHireProposal(params.id)
       if (pending.team_id !== team.id) {
         throw new OrchestrationError(

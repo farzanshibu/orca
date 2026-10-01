@@ -53,7 +53,7 @@ export const TEAM_AUTOMATION_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'schedule missions')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'schedule missions')
       return {
         mission: db.addTeamMission(team.id, {
           name: params.name,
@@ -71,7 +71,7 @@ export const TEAM_AUTOMATION_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'change missions')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'change missions')
       requireMissionInTeam(db, team, params.id)
       return { mission: db.setTeamMissionEnabled(params.id, params.enabled) }
     }
@@ -83,7 +83,7 @@ export const TEAM_AUTOMATION_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'remove missions')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'remove missions')
       requireMissionInTeam(db, team, params.id)
       db.removeTeamMission(params.id)
       return { removed: params.id }
@@ -96,7 +96,7 @@ export const TEAM_AUTOMATION_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'read trigger secrets')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'read trigger secrets')
       return triggerSettings(team)
     }
   }),
@@ -107,7 +107,7 @@ export const TEAM_AUTOMATION_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'change triggers')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'change triggers')
       const triggerMode = params.triggerMode
         ? TEAM_TRIGGER_MODES.find((mode) => mode === params.triggerMode)
         : undefined
@@ -132,7 +132,7 @@ export const TEAM_AUTOMATION_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'call closing time')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'call closing time')
       if (params.cancel) {
         endTeamClosingTime(db, team)
         return { closing: false, notified: 0 }

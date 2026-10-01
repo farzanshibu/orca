@@ -1,16 +1,41 @@
 import type { TuiAgent } from '../../../shared/tui-agent'
-import { isEquivalentPaneKey } from './db/pane-key-match'
 import type { OrchestrationAddressableAgent } from './structured-worker-group-addressing'
 
 /** A standing team member as `@role:<slug>` / `@member:<slug>` sees it. */
 export type TeamGroupMember = {
   slug: string
   roleSlug: string
-  terminalHandle: string | null
-  paneKey: string | null
+  isManager: boolean
 }
 
 type GroupTerminal = OrchestrationAddressableAgent & { paneKey?: string | null }
+
+const TEAM_GROUP_ADDRESS = /^@(role|member):(.+)$/
+
+export function isTeamGroupAddress(to: string): boolean {
+  return TEAM_GROUP_ADDRESS.test(to.toLowerCase())
+}
+
+/**
+ * The roster members a team address names. Why the roster and not live terminals: a member is
+ * addressable whether it is busy, idle, or stopped, and the sender decides how each is reached.
+ * `@role:manager` also names the team's manager, whatever its role is called.
+ */
+export function resolveTeamGroupMembers<T extends TeamGroupMember>(
+  to: string,
+  roster: readonly T[]
+): T[] {
+  const match = TEAM_GROUP_ADDRESS.exec(to.toLowerCase())
+  if (!match) {
+    return []
+  }
+  const [, kind, slug] = match
+  return roster.filter((member) =>
+    kind === 'member'
+      ? member.slug === slug
+      : member.roleSlug === slug || (slug === 'manager' && member.isManager)
+  )
+}
 
 // Why: group addresses enable broadcast messaging to logical groups of agents.
 // Resolution is done at send-time: one message record per recipient, same thread_id,
@@ -75,8 +100,7 @@ export function resolveGroupAddress(
   to: string,
   senderHandle: string,
   terminals: readonly GroupTerminal[],
-  getAgentStatus: (handle: string) => string | null,
-  teamMembers: readonly TeamGroupMember[] = []
+  getAgentStatus: (handle: string) => string | null
 ): string[] {
   if (!isGroupAddress(to)) {
     return [to]
@@ -102,27 +126,6 @@ export function resolveGroupAddress(
     const worktreeId = to.slice('@worktree:'.length)
     return terminals
       .filter((t) => t.handle !== senderHandle && t.worktreeId === worktreeId)
-      .map((t) => t.handle)
-  }
-
-  // Why: team groups resolve against the roster, then intersect with live candidates so only
-  // members with a deliverable mailbox receive mail; an idle member is reached with `team assign`.
-  const teamGroup = /^@(role|member):(.+)$/.exec(group)
-  if (teamGroup) {
-    const [, kind, slug] = teamGroup
-    const addressed = teamMembers.filter((member) =>
-      kind === 'role' ? member.roleSlug === slug : member.slug === slug
-    )
-    return terminals
-      .filter(
-        (t) =>
-          t.handle !== senderHandle &&
-          addressed.some(
-            (member) =>
-              member.terminalHandle === t.handle ||
-              Boolean(member.paneKey && t.paneKey && isEquivalentPaneKey(member.paneKey, t.paneKey))
-          )
-      )
       .map((t) => t.handle)
   }
 

@@ -176,6 +176,30 @@ describe('orchestration team methods', () => {
     ).rejects.toThrow(/Only the manager/)
   })
 
+  it('gives an attested terminal that is on no roster no team authority', async () => {
+    // A member's own sub-worker, or any other agent Orca launched: it used to count as the human.
+    const team = await seedTeam()
+    attestedHandle = 'term_sub_worker'
+    await expect(
+      call('orchestration.teamMemberStop', { team: team.id, member: 'jim' })
+    ).rejects.toThrow(/only the human operator/)
+    await expect(
+      call('orchestration.teamCreate', { repo: 'id:repo_1', name: 'Shadow' })
+    ).rejects.toThrow(/only the human operator/)
+    await expect(
+      call('orchestration.teamTaskCreate', { team: team.id, title: 'sneak a task in' })
+    ).rejects.toThrow(/only the manager or the operator/)
+    await expect(
+      call('orchestration.teamHirePropose', {
+        team: team.id,
+        slug: 'pam',
+        role: 'x',
+        agent: 'codex'
+      })
+    ).rejects.toThrow(/Only the manager/)
+    expect(db.listTeamHireProposals(team.id, 'pending')).toHaveLength(0)
+  })
+
   it('lets the manager propose a hire that only the operator can approve', async () => {
     const team = await seedTeam()
     attestedHandle = 'term_mgr'
@@ -257,6 +281,10 @@ describe('orchestration team methods', () => {
         text: expect.stringContaining('Skills to load before working: figma')
       })
     )
+    // The brief is where a member learns how to reach its teammates and the manager.
+    expect(deliverPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringMatching(/--to @member:<slug>.*@role:manager/) })
+    )
     expect(db.getTeamMember(pam.id)?.worktree_id).toBe('wt_team-pam')
     const mcp = JSON.parse(readFileSync(join(workspaceRoot, 'team-pam', '.mcp.json'), 'utf8'))
     expect(mcp.mcpServers.docs).toEqual({ command: 'npx', args: ['docs-mcp'] })
@@ -334,5 +362,32 @@ describe('orchestration team methods', () => {
     })
     // Restarting in its own worktree keeps the member's branch.
     expect(createTerminal).toHaveBeenCalledWith('id:wt_m', expect.anything())
+  })
+
+  it('hands a restarted member the mail sent to its earlier terminal', async () => {
+    const team = await seedTeam()
+    const jim = db.resolveTeamMemberSelector(team.id, 'jim')
+    db.insertMessage({
+      from: 'term_mgr',
+      to: 'term_jim',
+      subject: 'while you were out',
+      runId: team.run_id
+    })
+    // The terminal died: the member's row still names the handle nothing answers to.
+    livePanes.delete('term_jim')
+    vi.spyOn(runtime, 'createTerminal').mockResolvedValue({
+      handle: 'term_jim2',
+      paneKey: 'tab_j2:55555555-5555-4555-8555-555555555555',
+      worktreeId: 'wt_j',
+      title: 'jim'
+    })
+
+    await call('orchestration.teamMemberStart', { team: team.id, member: 'jim' })
+
+    expect(db.getUnreadMessages('term_jim2').map((message) => message.subject)).toEqual([
+      'while you were out'
+    ])
+    expect(db.getUnreadMessages('term_jim')).toEqual([])
+    expect(db.listPendingTeamQueue(jim.id)).toMatchObject([{ source: 'mail' }])
   })
 })

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { isGroupAddress, resolveGroupAddress } from './groups'
+import {
+  isGroupAddress,
+  isTeamGroupAddress,
+  resolveGroupAddress,
+  resolveTeamGroupMembers
+} from './groups'
 import type { RuntimeTerminalSummary } from '../../../shared/runtime-types'
 
 function makeSummary(
@@ -214,41 +219,41 @@ describe('resolveGroupAddress', () => {
   })
 })
 
-describe('resolveGroupAddress team groups', () => {
-  const terminals = [
-    { handle: 'h_mgr', worktreeId: 'wt_1', paneKey: 'tab_1:11111111-1111-4111-8111-111111111111' },
-    { handle: 'h_jim', worktreeId: 'wt_2', paneKey: 'tab_2:22222222-2222-4222-8222-222222222222' },
-    { handle: 'h_pam', worktreeId: 'wt_3', paneKey: 'tab_3:33333333-3333-4333-8333-333333333333' }
+describe('resolveTeamGroupMembers', () => {
+  const roster = [
+    { slug: 'michael', roleSlug: 'lead', isManager: true },
+    { slug: 'jim', roleSlug: 'engineer', isManager: false },
+    { slug: 'pam', roleSlug: 'engineer', isManager: false },
+    { slug: 'kevin', roleSlug: 'reviewer', isManager: false }
   ]
-  const members = [
-    { slug: 'michael', roleSlug: 'manager', terminalHandle: 'h_mgr', paneKey: null },
-    {
-      slug: 'jim',
-      roleSlug: 'engineer',
-      terminalHandle: 'stale',
-      paneKey: 'tab_9:22222222-2222-4222-8222-222222222222'
-    },
-    { slug: 'pam', roleSlug: 'engineer', terminalHandle: 'h_pam', paneKey: null },
-    { slug: 'kevin', roleSlug: 'engineer', terminalHandle: null, paneKey: null }
-  ]
+  const slugs = (to: string) => resolveTeamGroupMembers(to, roster).map((member) => member.slug)
 
-  it('fans @role out to live members, matching a reminted pane by leaf', () => {
-    expect(resolveGroupAddress('@role:engineer', 'h_mgr', terminals, noStatus, members)).toEqual([
-      'h_jim',
-      'h_pam'
-    ])
+  it('names every member of a role from the roster, whether or not it has a terminal', () => {
+    // The old resolution intersected with live Dispatch terminals, so an idle member got nothing.
+    expect(slugs('@role:engineer')).toEqual(['jim', 'pam'])
+    expect(slugs('@ROLE:Engineer')).toEqual(['jim', 'pam'])
   })
 
-  it('addresses one member by slug and never the sender', () => {
-    expect(resolveGroupAddress('@member:pam', 'h_mgr', terminals, noStatus, members)).toEqual([
-      'h_pam'
-    ])
-    expect(resolveGroupAddress('@member:michael', 'h_mgr', terminals, noStatus, members)).toEqual(
-      []
-    )
+  it('names one member by slug', () => {
+    expect(slugs('@member:kevin')).toEqual(['kevin'])
+    expect(slugs('@member:nobody')).toEqual([])
   })
 
-  it('resolves nothing outside a team', () => {
+  it('reaches the manager at @role:manager whatever its role is called', () => {
+    expect(slugs('@role:manager')).toEqual(['michael'])
+    expect(slugs('@role:lead')).toEqual(['michael'])
+  })
+
+  it('tells team addresses apart from the other groups', () => {
+    expect(isTeamGroupAddress('@member:jim')).toBe(true)
+    expect(isTeamGroupAddress('@Role:engineer')).toBe(true)
+    expect(isTeamGroupAddress('@all')).toBe(false)
+    expect(isTeamGroupAddress('@worktree:wt_1')).toBe(false)
+    expect(slugs('@all')).toEqual([])
+  })
+
+  it('leaves team addresses out of terminal group resolution', () => {
+    const terminals = [makeSummary('h_mgr'), makeSummary('h_jim')]
     expect(resolveGroupAddress('@role:engineer', 'h_mgr', terminals, noStatus)).toEqual([])
   })
 })

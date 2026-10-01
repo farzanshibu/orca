@@ -7,14 +7,33 @@ vi.mock('../selectors', () => ({ getTerminalHandle: vi.fn() }))
 import { printResult } from '../format'
 import { ORCHESTRATION_HANDLERS } from './orchestration'
 
-async function formatSend(result: unknown): Promise<string> {
+const SEND = {
+  command: 'orchestration send',
+  flags: [
+    ['from', 'term_sender'],
+    ['to', 'term_recipient'],
+    ['subject', 'ping']
+  ]
+} as const
+const REPLY = {
+  command: 'orchestration reply',
+  flags: [
+    ['from', 'term_sender'],
+    ['id', 'msg_1'],
+    ['body', 'noted']
+  ]
+} as const
+
+type FormattedCommand = { command: string; flags: readonly (readonly [string, string])[] }
+
+async function formatSend(
+  result: unknown,
+  { command, flags }: FormattedCommand = SEND
+): Promise<string> {
   callMock.mockReset().mockResolvedValueOnce({ result })
-  await ORCHESTRATION_HANDLERS['orchestration send']({
-    flags: new Map([
-      ['from', 'term_sender'],
-      ['to', 'term_recipient'],
-      ['subject', 'ping']
-    ]),
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: send and reply read only flags, cwd, json and client.call, and all four are supplied.
+  await ORCHESTRATION_HANDLERS[command]({
+    flags: new Map(flags),
     client: { call: callMock },
     cwd: '/workspace',
     json: false
@@ -84,4 +103,25 @@ it('prints delivery limitations on relayed receipts', async () => {
 
 it('leaves a canonical receipt unchanged', async () => {
   await expect(formatSend({ message: { id: 'msg_1' } })).resolves.toBe('Sent msg_1')
+})
+
+it('says when a reply went somewhere other than the sender it answers', async () => {
+  const line = await formatSend(
+    {
+      message: { id: 'msg_escalated' },
+      warnings: [
+        {
+          code: 'thread_escalated',
+          recipient: '@member:jim',
+          message: 'This thread passed 6 replies, so Orca gave your message to the manager.'
+        }
+      ]
+    },
+    REPLY
+  )
+
+  expect(line).toBe(
+    'Replied msg_escalated\nWarning: This thread passed 6 replies, so Orca gave your message to the manager.'
+  )
+  await expect(formatSend({ message: { id: 'msg_2' } }, REPLY)).resolves.toBe('Replied msg_2')
 })

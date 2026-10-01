@@ -13,6 +13,7 @@ import { exposeMessage } from './mailbox-message-receipt'
 import { resolveOrchestrationParty } from '../../../../orchestration/orchestration-party'
 import { recordReceiptBeforeNudge, replayMutationNudge } from './mutation-replay-nudge'
 import { resolveReplyRecipient } from './recipient-routing'
+import { holdTeamPeerMail, nudgeTeamPeerAboutMail, resolveTeamPeerMail } from './team-peer-mail'
 import {
   ReplyParams,
   InboxParams,
@@ -120,15 +121,38 @@ export const ORCHESTRATION_MESSAGE_METHODS = [
         originalFrom: original.from_handle,
         originalRunId: original.run_id
       })
+      const from = params.from ?? original.to_handle
+      const subject = `Re: ${original.subject}`
+      const threadId = original.thread_id ?? original.id
+      const teamPeers = resolveTeamPeerMail(
+        db,
+        { handle: from, paneKey: runtime.getTerminalPaneKey(from) },
+        { handle: original.from_handle, paneKey: original.sender_pane_key }
+      )
+      const held = holdTeamPeerMail({
+        runtime,
+        db,
+        peers: teamPeers,
+        threadId,
+        from,
+        senderPaneKey: undefined,
+        subject,
+        body: params.body,
+        recordMutationReceipt
+      })
+      if (held) {
+        return held
+      }
       db.markAsRead([original.id])
       const reply = db.insertMessage({
-        from: params.from ?? original.to_handle,
+        from,
         to: recipient.to,
-        subject: `Re: ${original.subject}`,
+        subject,
         body: params.body,
-        threadId: original.thread_id ?? original.id,
+        threadId,
         runId: recipient.runId
       })
+      nudgeTeamPeerAboutMail(runtime, db, teamPeers, { to: reply.to_handle, from, subject })
 
       const receipt = { message: exposeMessage(reply) }
       return recordReceiptBeforeNudge(recordMutationReceipt, receipt, () =>

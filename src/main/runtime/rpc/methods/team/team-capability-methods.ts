@@ -23,7 +23,7 @@ export const TEAM_CAPABILITY_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'grant capabilities')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'grant capabilities')
       const member = db.resolveTeamMemberSelector(team.id, params.member)
       db.setTeamMemberCapabilities(member.id, params.capabilities)
       // Grants reach the agent's files and brief on its next start.
@@ -58,7 +58,7 @@ export const TEAM_CAPABILITY_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'hire members directly')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'hire members directly')
       const { template } = params
       const slug = params.slug ?? toTeamSlug(template.name)
       const roleSlug = toTeamSlug(template.role)

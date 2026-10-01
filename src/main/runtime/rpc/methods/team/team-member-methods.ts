@@ -30,7 +30,7 @@ export const TEAM_MEMBER_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'hire members directly')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'hire members directly')
       assertTeamMemberLaunchable(params)
       const member = db.addTeamMember(team.id, {
         slug: params.slug,
@@ -53,7 +53,7 @@ export const TEAM_MEMBER_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'change members')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'change members')
       const current = db.resolveTeamMemberSelector(team.id, params.member)
       assertTeamMemberLaunchable({
         agent: params.agent ?? current.agent,
@@ -78,7 +78,7 @@ export const TEAM_MEMBER_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'remove members')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'remove members')
       const member = db.resolveTeamMemberSelector(team.id, params.member)
       await stopTeamMember({ runtime: context.runtime, db, member })
       return { member: db.archiveTeamMember(member.id) }
@@ -91,7 +91,7 @@ export const TEAM_MEMBER_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'start members')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'start members')
       if (team.status === 'paused') {
         throw new OrchestrationError('team_paused', `Team ${team.name} is paused; resume it first.`)
       }
@@ -107,7 +107,7 @@ export const TEAM_MEMBER_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'stop members')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'stop members')
       const member = db.resolveTeamMemberSelector(team.id, params.member)
       const stopped = await stopTeamMember({ runtime: context.runtime, db, member })
       return { member: await projectTeamMember(context.runtime, stopped) }
@@ -120,7 +120,7 @@ export const TEAM_MEMBER_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'pause members')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'pause members')
       const member = db.setTeamMemberPaused(
         db.resolveTeamMemberSelector(team.id, params.member).id,
         true
@@ -135,7 +135,7 @@ export const TEAM_MEMBER_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'resume members')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'resume members')
       const member = db.setTeamMemberPaused(
         db.resolveTeamMemberSelector(team.id, params.member).id,
         false
@@ -150,7 +150,7 @@ export const TEAM_MEMBER_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      requireTeamOperator(resolveTeamCaller(context, db, team), 'change spend caps')
+      requireTeamOperator(await resolveTeamCaller(context, db, team), 'change spend caps')
       const member = db.resolveTeamMemberSelector(team.id, params.member)
       db.setTeamMemberSpendCap(member.id, params.capUsd, params.tokenCap)
       return { member: await projectTeamMember(context.runtime, db.requireTeamMember(member.id)) }
@@ -163,7 +163,7 @@ export const TEAM_MEMBER_METHODS = [
     handler: async (params, context) => {
       const db = context.runtime.getOrchestrationDb()
       const team = await resolveTeamFromParams(context, db, params)
-      const caller = resolveTeamCaller(context, db, team)
+      const caller = await resolveTeamCaller(context, db, team)
       requireTeamOperatorOrManager(caller, 'steer other members')
       if (params.interrupt) {
         requireTeamOperator(caller, 'interrupt members')
