@@ -26,7 +26,9 @@ function tokenMatches(expected: string, header: string | undefined): boolean {
   return a.length === b.length && timingSafeEqual(a, b)
 }
 
-function reply(res: ServerResponse, status: number, body: object): void {
+type TeamWebhookReply = { error: string } | ReturnType<typeof acceptTeamTrigger>
+
+function reply(res: ServerResponse, status: number, body: TeamWebhookReply): void {
   res.writeHead(status, { 'content-type': 'application/json' })
   res.end(JSON.stringify(body))
 }
