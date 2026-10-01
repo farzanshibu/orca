@@ -1,8 +1,15 @@
 import React from 'react'
-import { stableHash } from './office-floor-roaming'
-
-/** Paint names map to `--tof-*` palette variables declared on `.team-office` in main.css. */
-export type Paint = string
+import {
+  OFFICE_HAIR_PAINTS,
+  OFFICE_SHIRT_PAINTS,
+  OFFICE_SKIN_PAINTS,
+  paintFill,
+  shirtShade,
+  type HairPaint,
+  type Paint,
+  type ShirtPaint,
+  type SkinPaint
+} from './office-floor-palette'
 
 /** One art pixel run. Paint goes through inline style so the palette stays in CSS variables. */
 export function Px({
@@ -18,21 +25,26 @@ export function Px({
   h?: number
   c: Paint
 }): React.JSX.Element {
-  return <rect x={x} y={y} width={w} height={h} style={{ fill: `var(--tof-${c})` }} />
+  return <rect x={x} y={y} width={w} height={h} style={{ fill: paintFill(c) }} />
 }
 
 export const FIGURE = { w: 14, h: 22 }
 const HAIR_STYLES = 5
-const SKINS = 3
-const HAIRS = 5
-const SHIRTS = 6
 
 export type Look = {
   hairStyle: number
-  skin: string
-  hair: string
-  shirt: string
+  skin: SkinPaint
+  hair: HairPaint
+  shirt: ShirtPaint
   tie: boolean
+}
+
+function stableHash(seed: string): number {
+  let hash = 0
+  for (const char of seed) {
+    hash = (hash * 31 + char.charCodeAt(0)) | 0
+  }
+  return Math.abs(hash)
 }
 
 /** A stable look per member so a character stays recognisable across renders and sessions. */
@@ -40,9 +52,9 @@ export function memberLook(slug: string, isManager: boolean): Look {
   const hash = stableHash(slug)
   return {
     hairStyle: hash % HAIR_STYLES,
-    skin: `skin-${(hash >> 3) % SKINS}`,
-    hair: `hair-${(hash >> 5) % HAIRS}`,
-    shirt: isManager ? 'shirt-suit' : `shirt-${(hash >> 7) % SHIRTS}`,
+    skin: OFFICE_SKIN_PAINTS[(hash >> 3) % OFFICE_SKIN_PAINTS.length],
+    hair: OFFICE_HAIR_PAINTS[(hash >> 5) % OFFICE_HAIR_PAINTS.length],
+    shirt: isManager ? 'shirt-suit' : OFFICE_SHIRT_PAINTS[(hash >> 7) % OFFICE_SHIRT_PAINTS.length],
     tie: isManager
   }
 }
@@ -110,7 +122,7 @@ function Body({ look }: { look: Look }): React.JSX.Element {
     <>
       <Px x={1} y={10} w={12} h={9} c="ink" />
       <Px x={2} y={11} w={10} h={7} c={shirt} />
-      <Px x={4} y={11} w={6} h={1} c={`${shirt}-shade`} />
+      <Px x={4} y={11} w={6} h={1} c={shirtShade(shirt)} />
       {look.tie ? (
         <>
           <Px x={6} y={11} w={2} h={1} c="paper" />
@@ -161,7 +173,7 @@ export function FigureBack({ look }: { look: Look }): React.JSX.Element {
       {look.hairStyle === 2 ? <Px x={5} y={-1} w={4} h={3} c={hair} /> : null}
       <Px x={1} y={10} w={12} h={9} c="ink" />
       <Px x={2} y={11} w={10} h={7} c={look.shirt} />
-      <Px x={6} y={11} w={2} h={7} c={`${look.shirt}-shade`} />
+      <Px x={6} y={11} w={2} h={7} c={shirtShade(look.shirt)} />
     </g>
   )
 }
@@ -173,7 +185,6 @@ export function Portrait({ look, size = 40 }: { look: Look; size?: number }): Re
       viewBox="-1 -2 16 16"
       width={size}
       height={size}
-      shapeRendering="crispEdges"
       aria-hidden="true"
       className="team-office shrink-0 rounded-md bg-muted"
     >
