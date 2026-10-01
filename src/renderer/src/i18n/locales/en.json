@@ -18742,6 +18742,18 @@
         "off": "{{count}} out of office",
         "unverifiable": "{{count}} with no recent update",
         "paused": "{{count}} paused"
+      },
+      "reception": {
+        "waiting": "{{count}} waiting on you"
+      },
+      "whiteboard": {
+        "moreTasks": "+{{count}} more",
+        "moreGoals": "Other open goals: {{count}}",
+        "progress": "{{done}}/{{total}}",
+        "empty": "Give the manager a goal"
+      },
+      "warehouse": {
+        "boxCount": "×{{count}}"
       }
     },
     "voice": {

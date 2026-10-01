@@ -77,12 +77,17 @@ function listedGoal(goal: TeamGoal, children: readonly TeamTask[]): TeamBoardGoa
   }
 }
 
+/** A task's title, or the first line of its spec when it was filed without one. */
+export function teamTaskHeadline(task: Pick<TeamTask, 'task_title' | 'spec'>): string {
+  return task.task_title?.trim() || (task.spec.trim().split('\n')[0] ?? '')
+}
+
 /** A goal the host left out of `goals`, rebuilt from its task row so its tasks keep their heading. */
 function unlistedGoal(row: TeamTask, children: readonly TeamTask[]): TeamBoardGoal {
   return {
     id: row.id,
     ref: row.ref,
-    title: row.task_title?.trim() || (row.spec.trim().split('\n')[0] ?? ''),
+    title: teamTaskHeadline(row),
     status:
       row.status === 'completed' ? 'completed' : row.status === 'failed' ? 'cancelled' : 'open',
     progress: countProgress(children),
@@ -104,18 +109,23 @@ function isLaneShown(
   return closedAt !== null && now - closedAt < SETTLED_TTL_MS
 }
 
-/**
- * The board as lanes: open goals, then goals closed a moment ago, then tasks under no goal. A goal's
- * own task row is its heading, never a card. A task whose parent is not a goal the page knows of
- * stays on the board as a task with no goal rather than being dropped.
- */
-export function groupTeamBoard(args: {
-  goals: readonly TeamGoal[] | undefined
+/** A goal with its own task row, when the snapshot has one, and every task filed under it. */
+export type TeamGoalTasks = {
+  goal: TeamBoardGoal
+  row: TeamTask | undefined
   tasks: readonly TeamTask[]
-  now: number
-}): TeamBoardLane[] {
-  const { tasks, now } = args
-  const listed = args.goals ?? []
+}
+
+/**
+ * Every goal the page knows of, in the host's order (oldest first), each with all of its tasks
+ * however long ago they finished, and the tasks under no goal. A goal's own task row is never one
+ * of its tasks. A task whose parent is not a goal the page knows of counts as under no goal.
+ */
+export function groupTeamGoalTasks(
+  listedGoals: readonly TeamGoal[] | undefined,
+  tasks: readonly TeamTask[]
+): { goals: TeamGoalTasks[]; loose: TeamTask[] } {
+  const listed = listedGoals ?? []
   const rows = new Map(tasks.map((task) => [task.id, task]))
   const goalIds = new Set([
     ...listed.map((goal) => goal.id),
@@ -140,9 +150,31 @@ export function groupTeamBoard(args: {
       .filter((task) => task.kind === 'goal' && !listedIds.has(task.id))
       .map((row) => unlistedGoal(row, children.get(row.id) ?? []))
   ]
+  return {
+    goals: goals.map((goal) => ({
+      goal,
+      row: rows.get(goal.id),
+      tasks: children.get(goal.id) ?? []
+    })),
+    loose
+  }
+}
+
+/**
+ * The board as lanes: open goals, then goals closed a moment ago, then tasks under no goal. A goal's
+ * own task row is its heading, never a card. A task whose parent is not a goal the page knows of
+ * stays on the board as a task with no goal rather than being dropped.
+ */
+export function groupTeamBoard(args: {
+  goals: readonly TeamGoal[] | undefined
+  tasks: readonly TeamTask[]
+  now: number
+}): TeamBoardLane[] {
+  const { now } = args
+  const { goals, loose } = groupTeamGoalTasks(args.goals, args.tasks)
   const lanes = goals
-    .filter((goal) => isLaneShown(goal, rows.get(goal.id), children.get(goal.id) ?? [], now))
-    .map((goal) => ({ goal, cards: visibleTeamTasks(children.get(goal.id) ?? [], now) }))
+    .filter(({ goal, row, tasks }) => isLaneShown(goal, row, tasks, now))
+    .map(({ goal, tasks }) => ({ goal, cards: visibleTeamTasks(tasks, now) }))
   const looseCards = visibleTeamTasks(loose, now)
   return [
     ...lanes.filter((lane) => !isTeamGoalClosed(lane.goal)),

@@ -137,10 +137,12 @@ export function Keyboard({ x, y }: { x: number; y: number }): React.JSX.Element 
   )
 }
 
+export const PAPER_SHEET = { w: 7, h: 8 }
+
 export function PaperSheet({ x, y }: { x: number; y: number }): React.JSX.Element {
   return (
     <g>
-      <Px x={x} y={y} w={7} h={8} c="paper" />
+      <Px x={x} y={y} w={PAPER_SHEET.w} h={PAPER_SHEET.h} c="paper" />
       <Px x={x + 1} y={y + 2} w={5} h={1} c="paper-line" />
       <Px x={x + 1} y={y + 4} w={4} h={1} c="paper-line" />
       <Px x={x + 1} y={y + 6} w={5} h={1} c="paper-line" />

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   groupTeamBoard,
+  groupTeamGoalTasks,
   parseSqliteUtc,
   teamBoardColumn,
   teamGoalAction,
+  teamTaskHeadline,
   visibleTeamTasks
 } from './team-board-lanes'
 import { makeTeamTask } from './team-snapshot-test-fixtures'
@@ -179,6 +181,46 @@ describe('groupTeamBoard', () => {
       now: NOW
     })
     expect(lane.goal).toMatchObject({ progress: { done: 1, total: 2 }, reviewRequested: true })
+  })
+})
+
+describe('groupTeamGoalTasks', () => {
+  it('keeps every goal with all of its tasks, however long ago they finished', () => {
+    const tasks = [
+      goalRow('goal_1'),
+      child('task_old', 'goal_1', { status: 'completed', completed_at: '2026-09-01 08:00:00' }),
+      child('task_new', 'goal_1'),
+      goalRow('goal_stale', { status: 'failed', completed_at: '2026-09-01 08:00:00' }),
+      makeTeamTask({ id: 'task_loose', kind: 'task' })
+    ]
+    const goals = [goal({ id: 'goal_stale', status: 'cancelled' }), goal()]
+    const grouped = groupTeamGoalTasks(goals, tasks)
+    expect(
+      grouped.goals.map(({ goal: listed, row, tasks: filed }) => [
+        listed.id,
+        row?.id,
+        filed.map((task) => task.id)
+      ])
+    ).toEqual([
+      ['goal_stale', 'goal_stale', []],
+      ['goal_1', 'goal_1', ['task_old', 'task_new']]
+    ])
+    expect(grouped.loose.map((task) => task.id)).toEqual(['task_loose'])
+    // The board itself drops what the grouping keeps.
+    expect(laneIds(groupTeamBoard({ goals, tasks, now: NOW }))).toEqual([
+      ['goal_1', ['task_new']],
+      [null, ['task_loose']]
+    ])
+  })
+})
+
+describe('teamTaskHeadline', () => {
+  it('falls back to the first line of the spec when a task has no title', () => {
+    expect(teamTaskHeadline({ task_title: ' Parse fields ', spec: 'ignored' })).toBe('Parse fields')
+    expect(teamTaskHeadline({ task_title: null, spec: '\nTidy the docs\nand the index' })).toBe(
+      'Tidy the docs'
+    )
+    expect(teamTaskHeadline({ task_title: '  ', spec: '' })).toBe('')
   })
 })
 
