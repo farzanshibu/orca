@@ -737,3 +737,26 @@ describe('createUISlice space navigation', () => {
     expect(store.getState().activeView).toBe('artifacts')
   })
 })
+
+describe('createUISlice team page tab', () => {
+  it('keeps the selected tab while the Team page is closed', () => {
+    const store = createUIStore()
+    expect(store.getState().teamPageTab).toBe('floor')
+
+    store.getState().openTeamPage()
+    store.getState().setTeamPageTab('inbox')
+    store.getState().closeTeamPage()
+    store.getState().openTeamPage()
+
+    expect(store.getState().teamPageTab).toBe('inbox')
+  })
+
+  it('is left alone by a persisted-UI sync from another window', () => {
+    const store = createUIStore()
+    store.getState().setTeamPageTab('tasks')
+
+    store.getState().hydratePersistedUI(makePersistedUI(), 'sync')
+
+    expect(store.getState().teamPageTab).toBe('tasks')
+  })
+})

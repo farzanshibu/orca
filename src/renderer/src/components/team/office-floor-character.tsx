@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { DESK_CELL } from './office-floor-layout'
 import { ChairBack } from './office-floor-scene'
-import type { FloorActivity } from './office-floor-state'
 import { FIGURE, FigureBack, FigureFront, Px, type Look } from './office-floor-sprite'
 
 const WALK_MS = 2_400
@@ -45,7 +44,7 @@ export function FloorCharacter({
   id,
   name,
   look,
-  activity,
+  needsYou,
   seated,
   hasMail,
   x,
@@ -55,7 +54,8 @@ export function FloorCharacter({
   id: string
   name: string
   look: Look
-  activity: FloorActivity
+  /** Draws the "?" bubble; from the team's attention list, not from this member's own status. */
+  needsYou: boolean
   seated: boolean
   hasMail: boolean
   /** Where the feet rest, in art units. */
@@ -99,7 +99,7 @@ export function FloorCharacter({
           </>
         )}
       </g>
-      {activity === 'waiting' ? (
+      {needsYou ? (
         <Bubble kind="question" seated={seated} />
       ) : hasMail ? (
         <Bubble kind="mail" seated={seated} />

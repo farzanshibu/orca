@@ -34,10 +34,12 @@ export function parseHireTemplateText(
 
 export function TeamTemplateImportDialog({
   open,
+  busy,
   onOpenChange,
   onImport
 }: {
   open: boolean
+  busy: boolean
   onOpenChange: (open: boolean) => void
   onImport: (template: TeamHireTemplate) => Promise<boolean>
 }): React.JSX.Element {
@@ -64,7 +66,7 @@ export function TeamTemplateImportDialog({
         {problem ? <p className="text-[12px] text-destructive">{problem}</p> : null}
         <DialogFooter>
           <Button
-            disabled={!text.trim()}
+            disabled={busy || !text.trim()}
             onClick={() => {
               const result = parseHireTemplateText(text)
               if (!result.ok) {

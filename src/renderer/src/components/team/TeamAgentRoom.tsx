@@ -8,6 +8,8 @@ import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
 import { AgentTerminalPreview } from '../dashboard-popout/AgentTerminalPreview'
 import { TeamCapabilitiesEditor } from './TeamCapabilitiesEditor'
 import { DictateButton } from './TeamVoicePanel'
+import { teamAgentLabel } from './team-agent-label'
+import { teamMessageTypeLabel } from './team-enum-labels'
 import {
   queueTeamMessage,
   readTerminalPtyId,
@@ -16,6 +18,7 @@ import {
   sendToTeamMember
 } from './team-runtime-client'
 import type { TeamLogMessage, TeamMember } from './team-snapshot-types'
+import type { TeamAct } from './use-team-page-state'
 
 function useMemberPtyId(target: RuntimeClientTarget, handle: string | null): string | null {
   const [ptyId, setPtyId] = useState<string | null>(null)
@@ -47,6 +50,7 @@ export function TeamAgentRoom({
   teamId,
   member,
   log,
+  busy,
   act,
   onClose
 }: {
@@ -54,7 +58,8 @@ export function TeamAgentRoom({
   teamId: string
   member: TeamMember | null
   log: readonly TeamLogMessage[]
-  act: (mutation: () => Promise<unknown>) => Promise<boolean>
+  busy: boolean
+  act: TeamAct
   onClose: () => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState('')
@@ -91,7 +96,7 @@ export function TeamAgentRoom({
         <DialogTitle>{member?.display_name ?? ''}</DialogTitle>
         <DialogDescription>
           {member
-            ? `${member.role_slug} · ${member.agent}${member.model ? ` · ${member.model}` : ''}`
+            ? `${member.role_slug} · ${teamAgentLabel(member.agent)}${member.model ? ` · ${member.model}` : ''}`
             : ''}
         </DialogDescription>
         {member ? (
@@ -105,6 +110,7 @@ export function TeamAgentRoom({
                 target={target}
                 teamId={teamId}
                 member={member}
+                busy={busy}
                 act={act}
               />
             </div>
@@ -122,9 +128,11 @@ export function TeamAgentRoom({
                   <div key={message.id} className="space-y-0.5">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
                       {message.from_handle === handle
-                        ? translate('team.room.sent', 'Sent · {{type}}', { type: message.type })
+                        ? translate('team.room.sent', 'Sent · {{type}}', {
+                            type: teamMessageTypeLabel(message.type)
+                          })
                         : translate('team.room.received', 'Received · {{type}}', {
-                            type: message.type
+                            type: teamMessageTypeLabel(message.type)
                           })}
                     </div>
                     <div className="text-[13px] font-medium">{message.subject}</div>
@@ -151,7 +159,7 @@ export function TeamAgentRoom({
                     <Button
                       size="icon-xs"
                       variant="ghost"
-                      disabled={index === 0}
+                      disabled={busy || index === 0}
                       aria-label={translate('team.room.moveUp', 'Move up')}
                       onClick={() =>
                         void act(() =>
@@ -168,7 +176,7 @@ export function TeamAgentRoom({
                     <Button
                       size="icon-xs"
                       variant="ghost"
-                      disabled={index === member.queue.length - 1}
+                      disabled={busy || index === member.queue.length - 1}
                       aria-label={translate('team.room.moveDown', 'Move down')}
                       onClick={() =>
                         void act(() =>
@@ -185,6 +193,7 @@ export function TeamAgentRoom({
                     <Button
                       size="icon-xs"
                       variant="ghost"
+                      disabled={busy}
                       aria-label={translate('team.room.removeQueued', 'Remove from queue')}
                       onClick={() =>
                         void act(() => removeTeamQueueItem(target, { team: teamId, id: item.id }))
@@ -209,11 +218,16 @@ export function TeamAgentRoom({
             />
             <div className="flex items-center gap-1.5">
               <DictateButton targetRef={draftRef} />
-              <Button size="sm" onClick={() => void submit('now')} disabled={!handle}>
+              <Button size="sm" onClick={() => void submit('now')} disabled={busy || !handle}>
                 <Send />
                 {translate('team.room.sendNow', 'Send now')}
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => void submit('queue')}>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => void submit('queue')}
+                disabled={busy}
+              >
                 <ListPlus />
                 {translate('team.room.queueIt', 'Queue')}
               </Button>
@@ -221,7 +235,7 @@ export function TeamAgentRoom({
                 size="sm"
                 variant="ghost"
                 onClick={() => void submit('interrupt')}
-                disabled={!handle}
+                disabled={busy || !handle}
               >
                 <Zap />
                 {translate('team.room.interrupt', 'Interrupt and send')}

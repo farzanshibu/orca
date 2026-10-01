@@ -4,7 +4,7 @@ import { useAppStore } from '@/store'
 import { translate } from '@/i18n/i18n'
 import { FloorCharacter } from './office-floor-character'
 import { floorColumns, floorLayout, type FloorDesk } from './office-floor-layout'
-import { FloorRoster, type PlacedMember } from './office-floor-roster'
+import { FloorRoster, floorActivityLabel, type PlacedMember } from './office-floor-roster'
 import { ROAM_INTERVAL_MS, roamTargets } from './office-floor-roaming'
 import {
   ChairBack,
@@ -16,7 +16,10 @@ import {
 import { memberLook } from './office-floor-sprite'
 import { floorActivity, summarizeFloor } from './office-floor-state'
 import { parseSqliteUtc } from './TeamTaskBoard'
+import type { TeamAttention } from './team-attention'
+import { teamMemberLiveness } from './team-member-liveness'
 import type { TeamLogMessage, TeamMember, TeamTask } from './team-snapshot-types'
+import { teamMemberCurrentTask } from './team-task-owner'
 import { useTeamClock } from './use-team-clock'
 
 // Mail newer than this marks the sender and recipient desks, so the floor shows traffic, not history.
@@ -25,20 +28,24 @@ const MAIL_WINDOW_MS = 10_000
 const MAX_ART_SCALE = 3
 
 function FloorSummaryLine({
-  placed
+  placed,
+  waitingOnYou
 }: {
   placed: readonly PlacedMember[]
+  waitingOnYou: number
 }): React.JSX.Element | null {
-  const summary = summarizeFloor(placed.map((entry) => entry.activity))
+  const summary = summarizeFloor(
+    placed.map(({ activity, member }) => ({ activity, paused: Boolean(member.paused_at) }))
+  )
   const parts = [
     summary.working
       ? translate('team.floor.summary.working', '{{count}} working', {
           count: summary.working
         })
       : null,
-    summary.waiting
-      ? translate('team.floor.summary.waiting', '{{count}} need you', {
-          count: summary.waiting
+    waitingOnYou
+      ? translate('team.floor.summary.waiting', '{{count}} waiting on you', {
+          count: waitingOnYou
         })
       : null,
     summary.idle
@@ -46,8 +53,18 @@ function FloorSummaryLine({
           count: summary.idle
         })
       : null,
+    summary.unverifiable
+      ? translate('team.floor.summary.unverifiable', '{{count}} with no recent update', {
+          count: summary.unverifiable
+        })
+      : null,
+    summary.paused
+      ? translate('team.floor.summary.paused', '{{count}} paused', {
+          count: summary.paused
+        })
+      : null,
     summary.off
-      ? translate('team.floor.summary.off', '{{count}} offline', {
+      ? translate('team.floor.summary.off', '{{count}} out of office', {
           count: summary.off
         })
       : null
@@ -77,11 +94,14 @@ function useContainerWidth(ref: React.RefObject<HTMLElement | null>): number {
 function DeskPlate({
   desk,
   label,
+  status,
   dim,
   onActivate
 }: {
   desk: FloorDesk
   label: string
+  /** A second line under the name, for a state the desk alone does not show. */
+  status?: string
   dim: boolean
   onActivate: () => void
 }): React.JSX.Element {
@@ -90,7 +110,7 @@ function DeskPlate({
     <g
       role="button"
       tabIndex={0}
-      aria-label={label}
+      aria-label={status ? `${label}, ${status}` : label}
       className="team-office-desk cursor-pointer outline-none"
       onClick={onActivate}
       onKeyDown={(event) => {
@@ -110,6 +130,17 @@ function DeskPlate({
       >
         {label}
       </text>
+      {status ? (
+        <text
+          x={x + w / 2}
+          y={y + 68}
+          textAnchor="middle"
+          data-dim="true"
+          className="team-office-label"
+        >
+          {status}
+        </text>
+      ) : null}
     </g>
   )
 }
@@ -118,12 +149,14 @@ export function TeamOfficeFloor({
   members,
   tasks,
   log,
+  attention,
   onOpenRoom,
   onAddMember
 }: {
   members: readonly TeamMember[]
   tasks: readonly TeamTask[]
   log: readonly TeamLogMessage[]
+  attention: TeamAttention
   onOpenRoom: (memberId: string) => void
   onAddMember: () => void
 }): React.JSX.Element {
@@ -152,18 +185,22 @@ export function TeamOfficeFloor({
     }
     return handles
   }, [log, now])
-  const placed: PlacedMember[] = members.map((member) => ({
-    member,
-    activity: floorActivity(member.liveness, member.agent_status, Boolean(member.paused_at)),
-    tool: member.pane_key ? (toolByPane[member.pane_key] ?? '') : '',
-    task: tasks.find(
-      (task) =>
-        task.status === 'dispatched' &&
-        task.assignee_handle !== null &&
-        task.assignee_handle === member.live_handle
-    ),
-    hasMail: member.live_handle !== null && mailHandles.has(member.live_handle)
-  }))
+  const placed: PlacedMember[] = members.map((member) => {
+    const needsYou = attention.memberIds.has(member.id)
+    return {
+      member,
+      activity: floorActivity({
+        liveness: teamMemberLiveness(member),
+        agentStatus: member.agent_status,
+        paused: Boolean(member.paused_at),
+        needsYou
+      }),
+      needsYou,
+      tool: member.pane_key ? (toolByPane[member.pane_key] ?? '') : '',
+      task: teamMemberCurrentTask(member, tasks),
+      hasMail: member.live_handle !== null && mailHandles.has(member.live_handle)
+    }
+  })
   // Managers come first so the lead's corner office is stable when several are flagged.
   const ordered = [...placed].sort((a, b) => b.member.is_manager - a.member.is_manager)
   const manager = ordered.find((entry) => entry.member.is_manager)
@@ -189,14 +226,16 @@ export function TeamOfficeFloor({
     ordered.filter((entry) => targets.get(entry.member.id)?.kind === 'desk').map((e) => e.member.id)
   )
 
-  const screenFor = (entry: PlacedMember | undefined): ScreenState =>
-    !entry
-      ? 'vacant'
-      : seatedIds.has(entry.member.id)
-        ? entry.activity
-        : entry.activity === 'off'
-          ? 'off'
-          : 'idle'
+  // A member with no recent update keeps its seat, but its monitor claims nothing about its work.
+  const screenFor = (entry: PlacedMember | undefined): ScreenState => {
+    if (!entry) {
+      return 'vacant'
+    }
+    if (entry.activity === 'off' || entry.activity === 'unverifiable') {
+      return 'off'
+    }
+    return seatedIds.has(entry.member.id) ? entry.activity : 'idle'
+  }
   const deskEntries: { desk: FloorDesk; entry: PlacedMember | undefined }[] = [
     { desk: layout.managerDesk, entry: manager },
     ...layout.desks.map((desk, index) => ({ desk, entry: staff[index] }))
@@ -208,7 +247,7 @@ export function TeamOfficeFloor({
         <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
           {translate('team.floor.office', 'Office')}
         </span>
-        <FloorSummaryLine placed={placed} />
+        <FloorSummaryLine placed={placed} waitingOnYou={attention.count} />
       </div>
       <div ref={frameRef} className="w-full">
         <svg
@@ -254,7 +293,7 @@ export function TeamOfficeFloor({
                 id={entry.member.id}
                 name={entry.member.display_name}
                 look={memberLook(entry.member.slug, Boolean(entry.member.is_manager))}
-                activity={entry.activity}
+                needsYou={entry.needsYou}
                 seated={target?.kind === 'desk'}
                 hasMail={entry.hasMail}
                 x={spot.x}
@@ -269,6 +308,11 @@ export function TeamOfficeFloor({
                 key={entry.member.id}
                 desk={desk}
                 label={entry.member.display_name}
+                status={
+                  entry.activity === 'unverifiable'
+                    ? floorActivityLabel(entry.activity, false)
+                    : undefined
+                }
                 dim={entry.activity === 'off'}
                 onActivate={() => onOpenRoom(entry.member.id)}
               />

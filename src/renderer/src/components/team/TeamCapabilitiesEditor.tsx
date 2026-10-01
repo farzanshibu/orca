@@ -12,6 +12,7 @@ import {
 } from '../../../../shared/team-capabilities'
 import { exportTeamMember, setTeamMemberCapabilities } from './team-runtime-client'
 import type { TeamMember } from './team-snapshot-types'
+import type { TeamAct } from './use-team-page-state'
 
 function splitList(value: string): string[] {
   return value
@@ -24,12 +25,14 @@ export function TeamCapabilitiesEditor({
   target,
   teamId,
   member,
+  busy,
   act
 }: {
   target: RuntimeClientTarget
   teamId: string
   member: TeamMember
-  act: (mutation: () => Promise<unknown>) => Promise<boolean>
+  busy: boolean
+  act: TeamAct
 }): React.JSX.Element {
   const current = parseTeamMemberCapabilities(member.capabilities)
   const [skills, setSkills] = useState(current.skills.join(', '))
@@ -100,13 +103,14 @@ export function TeamCapabilitiesEditor({
       </div>
       {problem ? <p className="text-[12px] text-destructive">{problem}</p> : null}
       <div className="flex items-center gap-1.5">
-        <Button size="xs" variant="secondary" onClick={() => void save()}>
+        <Button size="xs" variant="secondary" disabled={busy} onClick={() => void save()}>
           <Save />
           {translate('team.caps.save', 'Save grants (next start)')}
         </Button>
         <Button
           size="xs"
           variant="ghost"
+          disabled={busy}
           onClick={() =>
             void act(async () => {
               const { template } = await exportTeamMember(target, {

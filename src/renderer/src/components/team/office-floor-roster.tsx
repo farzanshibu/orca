@@ -11,12 +11,14 @@ import type { TeamMember, TeamTask } from './team-snapshot-types'
 export type PlacedMember = {
   member: TeamMember
   activity: FloorActivity
+  /** Something of this member's waits on the human; draws the "?" marker. */
+  needsYou: boolean
   tool: string
   task: TeamTask | undefined
   hasMail: boolean
 }
 
-function activityLabel(activity: FloorActivity, paused: boolean): string {
+export function floorActivityLabel(activity: FloorActivity, paused: boolean): string {
   switch (activity) {
     case 'working':
       return translate('team.floor.status.working', 'Working')
@@ -24,6 +26,8 @@ function activityLabel(activity: FloorActivity, paused: boolean): string {
       return translate('team.floor.status.waiting', 'Needs you')
     case 'idle':
       return translate('team.floor.status.idle', 'On a break')
+    case 'unverifiable':
+      return translate('team.floor.status.unverifiable', 'No recent update')
     case 'off':
       return paused
         ? translate('team.floor.status.paused', 'Paused')
@@ -56,8 +60,9 @@ function RosterCard({
     <button
       type="button"
       data-activity={activity}
+      data-needs-you={entry.needsYou ? 'true' : undefined}
       onClick={() => onOpenRoom(member.id)}
-      className="flex w-60 shrink-0 snap-start items-center gap-3 rounded-lg border border-border bg-card p-2.5 text-left shadow-xs transition-colors outline-none hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring data-[activity=off]:opacity-70 data-[activity=waiting]:border-agent-question/50"
+      className="flex w-60 shrink-0 snap-start items-center gap-3 rounded-lg border border-border bg-card p-2.5 text-left shadow-xs transition-colors outline-none hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring data-[activity=off]:opacity-70 data-[needs-you=true]:border-agent-question/50"
     >
       <Portrait look={memberLook(member.slug, Boolean(member.is_manager))} />
       <div className="min-w-0 flex-1">
@@ -65,15 +70,15 @@ function RosterCard({
           <span className="truncate text-[13px] font-medium">{member.display_name}</span>
           <AgentIcon agent={isTuiAgent(member.agent) ? member.agent : null} size={12} />
           {member.is_manager ? (
-            <span className="rounded-sm bg-muted px-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+            <span className="rounded-sm bg-muted px-1 text-[11px] font-semibold tracking-[0.05em] text-muted-foreground uppercase">
               {translate('team.floor.manager', 'Lead')}
             </span>
           ) : null}
         </div>
         <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-          <AgentStateDot state={floorDotState(activity, member.liveness)} size="sm" />
+          <AgentStateDot state={floorDotState(activity)} size="sm" />
           <span className="truncate">
-            {activityLabel(activity, Boolean(member.paused_at))} · {member.role_slug}
+            {floorActivityLabel(activity, Boolean(member.paused_at))} · {member.role_slug}
           </span>
         </div>
         <div className="truncate font-mono text-[11px] text-muted-foreground">

@@ -10,6 +10,7 @@ import type { LaunchSource } from '../../../../../shared/telemetry-events'
 import type { TaskSourceContext } from '../../../../../shared/task-source-context'
 import type { ExecutionHostId } from '../../../../../shared/execution-host'
 import type { TaskResumeState, TopLevelView } from '../../../../../shared/ui-chrome-types'
+import type { TeamPageTab } from '../../../components/team/team-page-tab'
 
 export type PendingSidebarWorktreeReveal = {
   worktreeId: string
@@ -183,6 +184,9 @@ export type UISliceCore = {
   closeAutomationsPage: () => void
   openTeamPage: () => void
   closeTeamPage: () => void
+  /** Kept in the store because the Team page unmounts when another view opens. Not written to disk. */
+  teamPageTab: TeamPageTab
+  setTeamPageTab: (tab: TeamPageTab) => void
   openSpacePage: () => void
   closeSpacePage: () => void
   openSkillsPage: () => void

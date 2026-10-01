@@ -1,5 +1,6 @@
 import type { UISlice, UISliceGet, UISliceSet } from './ui-slice-contract'
 import { rewindHistoryIndexPastView } from '../worktree-nav-history'
+import { DEFAULT_TEAM_PAGE_TAB } from '../../../components/team/team-page-tab'
 
 export function createUiViewActions(set: UISliceSet, get: UISliceGet): Partial<UISlice> {
   return {
@@ -41,6 +42,8 @@ export function createUiViewActions(set: UISliceSet, get: UISliceGet): Partial<U
           state.activeView === 'team' ? state.previousViewBeforeTeam : state.activeView
       })),
     closeTeamPage: () => set((state) => ({ activeView: state.previousViewBeforeTeam })),
+    teamPageTab: DEFAULT_TEAM_PAGE_TAB,
+    setTeamPageTab: (tab) => set({ teamPageTab: tab }),
     openSpacePage: () => {
       get().recordFeatureInteraction?.('workspace-cleanup')
       set((state) => ({

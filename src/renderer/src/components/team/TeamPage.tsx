@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { FileInput, Plus, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -8,40 +8,33 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { translate } from '@/i18n/i18n'
-import { TeamAgentCard } from './TeamAgentCard'
 import { TeamAgentRoom } from './TeamAgentRoom'
-import { TeamAutomationsPanel } from './TeamAutomationsPanel'
-import { TeamMemoryPanel } from './TeamMemoryPanel'
-import { TeamOfficeFloor } from './TeamOfficeFloor'
-import { TeamTaskComposer } from './TeamTaskComposer'
-import { TeamInbox } from './TeamInbox'
-import { TeamOrchestratorPanel } from './TeamOrchestratorPanel'
+import { TeamActionError, TeamConnectionLine, TeamLoadingLine } from './TeamPageNotices'
+import { TeamPageTabs } from './TeamPageTabs'
 import { TeamCreateDialog, TeamMemberDialog } from './TeamSetupDialogs'
-import { TeamTaskBoard } from './TeamTaskBoard'
-import { useTeamClock } from './use-team-clock'
 import { TeamTemplateImportDialog } from './TeamTemplateImportDialog'
-import {
-  addTeamMember,
-  createTeam,
-  importTeamMember,
-  runTeamMemberAction
-} from './team-runtime-client'
-import { useTeamPageState } from './use-team-page-state'
+import { collectTeamAttention, NO_TEAM_ATTENTION } from './team-attention'
+import { addTeamMember, createTeam, importTeamMember } from './team-runtime-client'
+import { useTeamPageState, type TeamAct } from './use-team-page-state'
 
 export default function TeamPage(): React.JSX.Element {
   const state = useTeamPageState()
-  const { target, snapshot, act } = state
+  const { target, snapshot, act, pendingActions } = state
   const [createOpen, setCreateOpen] = useState(false)
   const [memberOpen, setMemberOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [roomMemberId, setRoomMemberId] = useState<string | null>(null)
-  const now = useTeamClock(30_000)
   const roomMember = snapshot?.members.find((member) => member.id === roomMemberId) ?? null
-  const waiting = snapshot
-    ? snapshot.pendingQuestions.length + snapshot.pendingGates.length + snapshot.pendingHires.length
-    : 0
+  // One list for the Inbox count, the floor's "?" markers and the summary line.
+  const attention = useMemo(
+    () => (snapshot ? collectTeamAttention(snapshot) : NO_TEAM_ATTENTION),
+    [snapshot]
+  )
+  const scoped = (key: string): { busy: boolean; act: TeamAct } => ({
+    busy: pendingActions.includes(key),
+    act: (mutation) => act(mutation, key)
+  })
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-background pt-5 md:pt-6">
@@ -89,16 +82,33 @@ export default function TeamPage(): React.JSX.Element {
           {translate('team.page.newTeam', 'New team')}
         </Button>
       </header>
-      {state.error ? (
-        <div className="mx-5 mb-2 rounded-md border border-destructive/40 px-3 py-2 text-[13px] text-destructive">
-          {state.error}
-        </div>
+      {state.actionError ? (
+        <TeamActionError message={state.actionError} onDismiss={state.dismissActionError} />
+      ) : null}
+      {state.repoId && state.connectionError ? (
+        <TeamConnectionLine message={state.connectionError} />
       ) : null}
       {!state.repoId ? (
         <p className="px-5 text-[14px] text-muted-foreground">
           {translate('team.page.noRepo', 'Open a repository to see its team.')}
         </p>
-      ) : !snapshot ? (
+      ) : snapshot ? (
+        <div className="flex min-h-0 flex-1 flex-col px-3 pb-4 md:px-5">
+          <TeamPageTabs
+            state={state}
+            snapshot={snapshot}
+            attention={attention}
+            scoped={scoped}
+            onOpenRoom={setRoomMemberId}
+            onAddMember={() => setMemberOpen(true)}
+          />
+        </div>
+      ) : !state.loaded || state.selectedTeamId ? (
+        // Not "no team yet": nothing has answered for this repository or team so far.
+        state.connectionError ? null : (
+          <TeamLoadingLine />
+        )
+      ) : (
         <div className="px-5 text-[14px] text-muted-foreground">
           <p>{translate('team.page.empty', 'This repository has no team yet.')}</p>
           <Button className="mt-3" size="sm" onClick={() => setCreateOpen(true)}>
@@ -106,108 +116,21 @@ export default function TeamPage(): React.JSX.Element {
             {translate('team.page.createFirst', 'Create a team')}
           </Button>
         </div>
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col px-3 pb-4 md:px-5">
-          <Tabs defaultValue="floor" className="min-h-0 flex-1">
-            <TabsList>
-              <TabsTrigger value="floor">{translate('team.tab.floor', 'Floor')}</TabsTrigger>
-              <TabsTrigger value="agents">{translate('team.tab.agents', 'Agents')}</TabsTrigger>
-              <TabsTrigger value="orchestrator">
-                {translate('team.tab.orchestrator', 'Orchestrator')}
-              </TabsTrigger>
-              <TabsTrigger value="tasks">{translate('team.tab.tasks', 'Tasks')}</TabsTrigger>
-              <TabsTrigger value="inbox">
-                {waiting > 0
-                  ? translate('team.tab.inboxCount', 'Inbox ({{count}})', { count: waiting })
-                  : translate('team.tab.inbox', 'Inbox')}
-              </TabsTrigger>
-              <TabsTrigger value="automations">
-                {translate('team.tab.automations', 'Automations')}
-              </TabsTrigger>
-              <TabsTrigger value="memory">{translate('team.tab.memory', 'Memory')}</TabsTrigger>
-            </TabsList>
-            <TabsContent value="floor" className="flex min-h-0">
-              <TeamOfficeFloor
-                members={snapshot.members}
-                tasks={snapshot.tasks}
-                log={state.log}
-                onOpenRoom={setRoomMemberId}
-                onAddMember={() => setMemberOpen(true)}
-              />
-            </TabsContent>
-            <TabsContent value="agents" className="min-h-0">
-              <div className="scrollbar-sleek h-full overflow-y-auto">
-                {snapshot.members.length === 0 ? (
-                  <p className="text-[14px] text-muted-foreground">
-                    {translate(
-                      'team.page.noMembers',
-                      'Add a manager and a few members to get started.'
-                    )}
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
-                    {snapshot.members.map((member) => (
-                      <TeamAgentCard
-                        key={member.id}
-                        member={member}
-                        task={snapshot.tasks.find(
-                          (task) =>
-                            task.status === 'dispatched' &&
-                            task.assignee_handle !== null &&
-                            task.assignee_handle === member.live_handle
-                        )}
-                        onOpenRoom={setRoomMemberId}
-                        onAction={(target_, action) =>
-                          void act(() =>
-                            runTeamMemberAction(target, {
-                              team: snapshot.team.id,
-                              member: target_.id,
-                              action
-                            })
-                          )
-                        }
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            <TabsContent value="orchestrator" className="flex min-h-0">
-              <TeamOrchestratorPanel
-                target={target}
-                snapshot={snapshot}
-                log={state.log}
-                act={act}
-              />
-            </TabsContent>
-            <TabsContent value="tasks" className="flex min-h-0">
-              <div className="flex min-h-0 flex-1 flex-col gap-3">
-                <TeamTaskComposer target={target} teamId={snapshot.team.id} act={act} />
-                <TeamTaskBoard tasks={snapshot.tasks} members={snapshot.members} now={now} />
-              </div>
-            </TabsContent>
-            <TabsContent value="inbox" className="flex min-h-0">
-              <TeamInbox target={target} snapshot={snapshot} log={state.log} act={act} />
-            </TabsContent>
-            <TabsContent value="automations" className="flex min-h-0">
-              <TeamAutomationsPanel target={target} teamId={snapshot.team.id} act={act} />
-            </TabsContent>
-            <TabsContent value="memory" className="flex min-h-0">
-              <TeamMemoryPanel target={target} teamId={snapshot.team.id} act={act} />
-            </TabsContent>
-          </Tabs>
-        </div>
       )}
       <TeamCreateDialog
         open={createOpen}
         repoName={state.repoName}
+        busy={pendingActions.includes('team-create')}
         onOpenChange={setCreateOpen}
         onCreate={async (name, charter) => {
           const repoId = state.repoId
           if (!repoId) {
             return false
           }
-          const ok = await act(() => createTeam(target, { repo: `id:${repoId}`, name, charter }))
+          const ok = await act(
+            () => createTeam(target, { repo: `id:${repoId}`, name, charter }),
+            'team-create'
+          )
           if (ok) {
             setCreateOpen(false)
           }
@@ -219,9 +142,10 @@ export default function TeamPage(): React.JSX.Element {
           key={memberOpen ? 'open' : 'closed'}
           open={memberOpen}
           hasManager={snapshot.members.some((member) => member.is_manager)}
+          busy={pendingActions.includes('member-add')}
           onOpenChange={setMemberOpen}
           onAdd={async (draft) => {
-            const ok = await act(() => addTeamMember(target, snapshot.team.id, draft))
+            const ok = await act(() => addTeamMember(target, snapshot.team.id, draft), 'member-add')
             if (ok) {
               setMemberOpen(false)
             }
@@ -232,10 +156,12 @@ export default function TeamPage(): React.JSX.Element {
       {snapshot ? (
         <TeamTemplateImportDialog
           open={importOpen}
+          busy={pendingActions.includes('member-import')}
           onOpenChange={setImportOpen}
           onImport={async (template) => {
-            const ok = await act(() =>
-              importTeamMember(target, { team: snapshot.team.id, template })
+            const ok = await act(
+              () => importTeamMember(target, { team: snapshot.team.id, template }),
+              'member-import'
             )
             if (ok) {
               setImportOpen(false)
@@ -250,7 +176,7 @@ export default function TeamPage(): React.JSX.Element {
           teamId={snapshot.team.id}
           member={roomMember}
           log={state.log}
-          act={act}
+          {...scoped('room')}
           onClose={() => setRoomMemberId(null)}
         />
       ) : null}

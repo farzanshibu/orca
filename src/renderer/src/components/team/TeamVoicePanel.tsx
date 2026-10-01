@@ -7,6 +7,7 @@ import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
 import { dispatchDictationControl } from '../dictation/dictation-control-events'
 import { sendToTeamMember } from './team-runtime-client'
 import type { TeamLogMessage, TeamMember } from './team-snapshot-types'
+import type { TeamAct } from './use-team-page-state'
 
 /** Focuses the field, then toggles Orca's dictation, which types into the focused field. */
 export function DictateButton({
@@ -42,13 +43,15 @@ export function TeamVoicePanel({
   teamId,
   manager,
   log,
+  busy,
   act
 }: {
   target: RuntimeClientTarget
   teamId: string
   manager: TeamMember
   log: readonly TeamLogMessage[]
-  act: (mutation: () => Promise<unknown>) => Promise<boolean>
+  busy: boolean
+  act: TeamAct
 }): React.JSX.Element {
   const [draft, setDraft] = useState('')
   const [readAloud, setReadAloud] = useState(false)
@@ -87,7 +90,7 @@ export function TeamVoicePanel({
         <DictateButton targetRef={inputRef} />
         <Button
           size="sm"
-          disabled={!draft.trim() || !manager.live_handle}
+          disabled={busy || !draft.trim() || !manager.live_handle}
           onClick={() =>
             void act(() =>
               sendToTeamMember(target, { team: teamId, member: manager.id, text: draft })

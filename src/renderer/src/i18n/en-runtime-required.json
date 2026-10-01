@@ -2691,7 +2691,6 @@
       },
       "status": {
         "responding": "Agent is responding",
-        "thinking": "Thinking",
         "toggleDetails": "Toggle turn details",
         "workedFor": "Worked for {{value0}}",
         "workingFor": "Working for {{value0}}"
@@ -2846,13 +2845,6 @@
         "probeSkippedHosts": "Hosts routed without the connection check (Try anyway):",
         "title": "Browse through SSH workspace hosts"
       }
-    }
-  },
-  "team": {
-    "orchestrator": {
-      "noCap": "No cap",
-      "notTripped": "No member has hit its cap.",
-      "tripped": "{{name}} stopped at {{spend}} (cap {{cap}})"
     }
   },
   "worktreeJumpPalette": {

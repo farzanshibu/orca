@@ -5,20 +5,23 @@ import { Button } from '@/components/ui/button'
 import { AgentIcon } from '@/lib/agent-catalog'
 import { translate } from '@/i18n/i18n'
 import { isTuiAgent } from '../../../../shared/tui-agent-config'
+import { teamAgentLabel } from './team-agent-label'
+import { teamMemberAwaitsPermission } from './team-attention'
+import { teamMemberLivenessLabel, teamPauseReasonLabel } from './team-enum-labels'
+import { teamMemberLiveness } from './team-member-liveness'
 import type { TeamMemberAction } from './team-runtime-client'
 import { formatUsd, type TeamMember, type TeamTask } from './team-snapshot-types'
 
 /** What the member is doing right now, in words. */
 export function describeTeamMemberActivity(member: TeamMember, task: TeamTask | undefined): string {
   if (member.paused_at) {
-    return member.pause_reason === 'spend_cap'
-      ? translate('team.activity.pausedSpend', 'Paused: spend cap reached')
-      : translate('team.activity.paused', 'Paused by you')
+    return teamPauseReasonLabel(member.pause_reason)
   }
-  if (member.liveness === 'stopped') {
-    return translate('team.activity.stopped', 'Not running')
+  const liveness = teamMemberLiveness(member)
+  if (liveness === 'stopped') {
+    return teamMemberLivenessLabel(liveness)
   }
-  if (member.liveness === 'unverifiable') {
+  if (liveness === 'unverifiable') {
     return translate('team.activity.unverifiable', 'Terminal not found; it may still be running')
   }
   if (member.agent_status === 'working' && task) {
@@ -30,7 +33,7 @@ export function describeTeamMemberActivity(member: TeamMember, task: TeamTask | 
   if (member.agent_status === 'working') {
     return translate('team.activity.working', 'Working')
   }
-  if (member.agent_status === 'permission') {
+  if (teamMemberAwaitsPermission(member)) {
     return translate('team.activity.permission', 'Waiting for a permission prompt')
   }
   return translate('team.activity.idle', 'Idle, waiting for work')
@@ -39,15 +42,19 @@ export function describeTeamMemberActivity(member: TeamMember, task: TeamTask | 
 export function TeamAgentCard({
   member,
   task,
+  busy,
   onOpenRoom,
   onAction
 }: {
   member: TeamMember
   task: TeamTask | undefined
+  busy: boolean
   onOpenRoom: (memberId: string) => void
   onAction: (member: TeamMember, action: TeamMemberAction) => void
 }): React.JSX.Element {
-  const running = member.liveness !== 'stopped'
+  const liveness = teamMemberLiveness(member)
+  // Unverifiable offers Stop, not Start: the member may still be running.
+  const running = liveness !== 'stopped'
   return (
     <div
       data-current={member.agent_status === 'working' ? 'true' : undefined}
@@ -65,11 +72,11 @@ export function TeamAgentCard({
             ) : null}
           </div>
           <div className="truncate text-[12px] text-muted-foreground">
-            {member.role_slug} · {member.agent}
+            {member.role_slug} · {teamAgentLabel(member.agent)}
             {member.model ? ` · ${member.model}` : ''}
           </div>
         </div>
-        <Badge variant="outline">{member.liveness}</Badge>
+        <Badge variant="outline">{teamMemberLivenessLabel(liveness)}</Badge>
       </div>
       <p className="line-clamp-2 min-h-[2lh] text-[13px]">
         {describeTeamMemberActivity(member, task)}
@@ -101,6 +108,7 @@ export function TeamAgentCard({
         <Button
           size="sm"
           variant="ghost"
+          disabled={busy}
           onClick={() => onAction(member, running ? 'Stop' : 'Start')}
         >
           {running ? <PowerOff /> : <Power />}
@@ -109,6 +117,7 @@ export function TeamAgentCard({
         <Button
           size="sm"
           variant="ghost"
+          disabled={busy}
           onClick={() => onAction(member, member.paused_at ? 'Resume' : 'Pause')}
         >
           {member.paused_at ? <Play /> : <Pause />}

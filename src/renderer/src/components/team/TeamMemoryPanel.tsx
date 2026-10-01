@@ -13,6 +13,7 @@ import {
   type TeamMemoryHit,
   type TeamMemoryResult
 } from './team-runtime-client'
+import type { TeamAct } from './use-team-page-state'
 
 function HitColumn({
   label,
@@ -50,11 +51,13 @@ function HitColumn({
 export function TeamMemoryPanel({
   target,
   teamId,
+  busy,
   act
 }: {
   target: RuntimeClientTarget
   teamId: string
-  act: (mutation: () => Promise<unknown>) => Promise<boolean>
+  busy: boolean
+  act: TeamAct
 }): React.JSX.Element {
   const [query, setQuery] = useState('')
   const [result, setResult] = useState<TeamMemoryResult | null>(null)
@@ -105,7 +108,7 @@ export function TeamMemoryPanel({
             onChange={(event) => setQuery(event.target.value)}
             placeholder={translate('team.memory.search', 'Search tickets, agents, and notes')}
           />
-          <Button type="submit" size="sm" variant="secondary">
+          <Button type="submit" size="sm" variant="secondary" disabled={busy}>
             <Search />
             {translate('team.memory.searchButton', 'Search')}
           </Button>
@@ -143,6 +146,7 @@ export function TeamMemoryPanel({
         <Button
           size="sm"
           className="self-start"
+          disabled={busy}
           onClick={() => void act(() => writeTeamNote(target, { team: teamId, note, content }))}
         >
           <Save />

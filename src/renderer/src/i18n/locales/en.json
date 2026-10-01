@@ -3276,7 +3276,7 @@
             "missing": {
               "tui": {
                 "title": "This ZCode build has no terminal UI",
-                "description": "Orca's hooks installed correctly \u2014 the zcode on your PATH just cannot open a session. The ZCode desktop app bundles the agent runtime without its terminal UI. Install a zcode that ships the TUI, then run zcode outside Orca to confirm."
+                "description": "Orca's hooks installed correctly — the zcode on your PATH just cannot open a session. The ZCode desktop app bundles the agent runtime without its terminal UI. Install a zcode that ships the TUI, then run zcode outside Orca to confirm."
               }
             }
           },
@@ -3975,7 +3975,9 @@
             }
           },
           "tooltip": {
-            "zcode": { "mcp": "MCP" },
+            "zcode": {
+              "mcp": "MCP"
+            },
             "cedb7b99e3": "% used",
             "6d6df77f41": "No data available",
             "7f7f208060": "Monthly",
@@ -18502,9 +18504,6 @@
       "label": "Team"
     },
     "activity": {
-      "pausedSpend": "Paused: spend cap reached",
-      "paused": "Paused by you",
-      "stopped": "Not running",
       "unverifiable": "Terminal not found; it may still be running",
       "workingOn": "Working on {{ref}}: {{title}}",
       "working": "Working",
@@ -18551,10 +18550,11 @@
       "nothingWaiting": "Nothing is waiting on you.",
       "chatter": "Between agents",
       "external": "From outside",
-      "noExternal": "Nothing from automations, webhooks, or Orca yet."
+      "noExternal": "Nothing from automations, webhooks, or Orca yet.",
+      "permission": "Waiting at a permission prompt in its terminal."
     },
     "orchestrator": {
-      "noCap": "No cap",
+      "noCap": "No $ cap",
       "setCap": "Set cap",
       "manager": "manager",
       "title": "Orchestrator",
@@ -18562,16 +18562,14 @@
       "noManager": "This team has no manager yet. Add a member and mark it as manager.",
       "breaker": "Breaker",
       "teamSpend": "Team spend {{spend}}",
-      "tripped": "{{name}} stopped at {{spend}} (cap {{cap}})",
-      "notTripped": "No member has hit its cap.",
+      "notTripped": "No breaker has tripped.",
       "resumeTeam": "Resume the team",
       "pauseTeam": "Pause the team",
       "routingLog": "Routing log",
       "noRouting": "No routing yet.",
       "noTokenCap": "No token cap",
       "cancelClosing": "Call off closing time",
-      "closingTime": "Closing time",
-      "trippedReason": "{{name}} stopped: {{reason}}"
+      "closingTime": "Closing time"
     },
     "page": {
       "title": "Team",
@@ -18581,7 +18579,10 @@
       "empty": "This repository has no team yet.",
       "createFirst": "Create a team",
       "noMembers": "Add a manager and a few members to get started.",
-      "importTemplate": "Import template"
+      "importTemplate": "Import template",
+      "reconnecting": "Reconnecting…",
+      "dismissError": "Dismiss",
+      "loading": "Loading team…"
     },
     "tab": {
       "agents": "Agents",
@@ -18620,7 +18621,6 @@
       "doing": "Doing",
       "blocked": "Blocked",
       "done": "Done",
-      "failed": "failed",
       "unassigned": "Unassigned",
       "newPlaceholder": "New task…",
       "add": "Add task",
@@ -18688,13 +18688,16 @@
         "waiting": "Needs you",
         "idle": "On a break",
         "paused": "Paused",
-        "off": "Out of office"
+        "off": "Out of office",
+        "unverifiable": "No recent update"
       },
       "summary": {
         "working": "{{count}} working",
-        "waiting": "{{count}} need you",
+        "waiting": "{{count}} waiting on you",
         "idle": "{{count}} on a break",
-        "off": "{{count}} offline"
+        "off": "{{count}} out of office",
+        "unverifiable": "{{count}} with no recent update",
+        "paused": "{{count}} paused"
       }
     },
     "voice": {
@@ -18704,6 +18707,90 @@
       "send": "Send",
       "readingAloud": "Reading replies aloud",
       "readAloud": "Read replies aloud"
+    },
+    "liveness": {
+      "live": "Running",
+      "unverifiable": "No recent update",
+      "stopped": "Not running"
+    },
+    "pause": {
+      "operator": "Paused by you",
+      "spendCap": "Paused: spend cap reached",
+      "tokenCap": "Paused: token cap reached",
+      "toolLoop": "Paused: repeated the same tool call",
+      "other": "Paused: {{reason}}"
+    },
+    "wait": {
+      "deps": "Waiting on another task",
+      "taskBlocked": "Waiting on a decision",
+      "memberBusy": "Finishing another task",
+      "memberPaused": "Member is paused",
+      "memberNotRunning": "Member is not running",
+      "memberUnverifiable": "No recent update from the member",
+      "managerNotRunning": "Manager is not running",
+      "teamInactive": "Team is paused or closing"
+    },
+    "closingWait": {
+      "working": "Finishing its current step",
+      "needsHuman": "Waiting on you",
+      "closingNoteQueued": "Wrap-up note not sent yet",
+      "stopping": "Wrapped up, stopping shortly",
+      "statusUnknown": "Status not readable",
+      "unverifiable": "No recent update"
+    },
+    "taskStatus": {
+      "pending": "Waiting on other tasks",
+      "ready": "Ready",
+      "dispatched": "In progress",
+      "completed": "Done",
+      "failed": "Failed",
+      "blocked": "Blocked"
+    },
+    "taskKind": {
+      "task": "Task",
+      "goal": "Goal"
+    },
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "archived": "Archived"
+    },
+    "messageType": {
+      "status": "Status",
+      "dispatch": "Assignment",
+      "workerDone": "Work finished",
+      "mergeReady": "Ready to merge",
+      "escalation": "Escalation",
+      "handoff": "Handoff",
+      "decisionGate": "Decision gate",
+      "question": "Question",
+      "heartbeat": "Heartbeat"
+    },
+    "triggerMode": {
+      "communicationOnly": "Post messages only",
+      "allowAll": "Post messages and create tasks",
+      "off": "Nothing"
+    },
+    "activityKind": {
+      "message": "Message",
+      "delivery": "Delivery",
+      "taskCreated": "Task created",
+      "taskAssigned": "Task assigned",
+      "taskStatus": "Task status changed",
+      "taskSettled": "Task finished",
+      "dispatchStarted": "Work started",
+      "dispatchFailed": "Work failed",
+      "goalCreated": "Goal created",
+      "goalReview": "Goal ready for review",
+      "goalClosed": "Goal closed",
+      "gateOpened": "Decision needed",
+      "gateResolved": "Decision made",
+      "hireProposed": "Hire proposed",
+      "hireDecided": "Hire decided",
+      "memberAdded": "Member added",
+      "memberState": "Member started or stopped",
+      "memberPaused": "Member paused",
+      "memberResumed": "Member resumed"
     }
   }
 }

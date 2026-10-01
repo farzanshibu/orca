@@ -1,6 +1,8 @@
 import React from 'react'
 import { translate } from '@/i18n/i18n'
-import { teamMemberForHandle, type TeamMember, type TeamTask } from './team-snapshot-types'
+import { teamTaskKindLabel, teamTaskStatusLabel } from './team-enum-labels'
+import type { TeamMember, TeamTask } from './team-snapshot-types'
+import { teamTaskOwner } from './team-task-owner'
 
 // Done cards leave the board on their own once they have been done this long.
 const DONE_CARD_TTL_MS = 30 * 60_000
@@ -83,7 +85,7 @@ export function TeamTaskBoard({
             </div>
             <div className="scrollbar-sleek flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
               {cards.map((task) => {
-                const owner = teamMemberForHandle(members, task.assignee_handle)
+                const owner = teamTaskOwner(task, members)
                 return (
                   <div
                     key={task.id}
@@ -91,8 +93,11 @@ export function TeamTaskBoard({
                   >
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       <span className="font-mono">{task.ref ?? task.id}</span>
+                      {task.kind && task.kind !== 'task' ? (
+                        <span>{teamTaskKindLabel(task.kind)}</span>
+                      ) : null}
                       {task.status === 'failed' ? (
-                        <span>{translate('team.tasks.failed', 'failed')}</span>
+                        <span>{teamTaskStatusLabel(task.status)}</span>
                       ) : null}
                     </div>
                     <div className="mt-1 line-clamp-3 text-[13px]">

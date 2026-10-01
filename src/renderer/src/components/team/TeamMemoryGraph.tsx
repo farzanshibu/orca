@@ -87,7 +87,8 @@ export function TeamMemoryGraph({
                 x={position.x}
                 y={position.y - 12}
                 textAnchor="middle"
-                className="fill-foreground text-[10px]"
+                // The viewBox is drawn at about 0.8x, so 14 units keeps the label at 11px or more.
+                className="fill-foreground text-[14px]"
               >
                 {node.label.slice(0, 24)}
               </text>

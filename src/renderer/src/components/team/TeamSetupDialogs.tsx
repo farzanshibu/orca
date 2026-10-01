@@ -49,11 +49,13 @@ function Field({
 export function TeamCreateDialog({
   open,
   repoName,
+  busy,
   onOpenChange,
   onCreate
 }: {
   open: boolean
   repoName: string | null
+  busy: boolean
   onOpenChange: (open: boolean) => void
   onCreate: (name: string, charter: string) => Promise<boolean>
 }): React.JSX.Element {
@@ -85,7 +87,7 @@ export function TeamCreateDialog({
         </div>
         <DialogFooter>
           <Button
-            disabled={!name.trim()}
+            disabled={busy || !name.trim()}
             onClick={() =>
               void onCreate(name, charter).then((ok) => {
                 if (ok) {
@@ -107,11 +109,13 @@ export function TeamMemberDialog({
   open,
   hasManager,
   initial,
+  busy,
   onOpenChange,
   onAdd
 }: {
   open: boolean
   hasManager: boolean
+  busy: boolean
   /** Prefills the form, as a role bundle does. */
   initial?: Partial<TeamMemberDraft>
   onOpenChange: (open: boolean) => void
@@ -235,7 +239,7 @@ export function TeamMemberDialog({
         </div>
         <DialogFooter>
           <Button
-            disabled={!slug || !roleSlug}
+            disabled={busy || !slug || !roleSlug}
             onClick={() =>
               slug && roleSlug
                 ? void onAdd({

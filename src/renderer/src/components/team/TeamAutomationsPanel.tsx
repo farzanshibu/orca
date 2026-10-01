@@ -20,6 +20,7 @@ import {
   TeamMissionScheduleSchema,
   describeTeamMissionSchedule
 } from '../../../../shared/team-mission-schedule'
+import { teamTriggerModeLabel } from './team-enum-labels'
 import {
   addTeamMission,
   listTeamMissions,
@@ -30,6 +31,7 @@ import {
   type TeamMissionRow,
   type TeamTriggerSettings
 } from './team-runtime-client'
+import type { TeamAct } from './use-team-page-state'
 
 function scheduleLabel(raw: string): string {
   try {
@@ -51,11 +53,13 @@ function SectionTitle({ children }: { children: React.ReactNode }): React.JSX.El
 export function TeamAutomationsPanel({
   target,
   teamId,
+  busy,
   act
 }: {
   target: RuntimeClientTarget
   teamId: string
-  act: (mutation: () => Promise<unknown>) => Promise<boolean>
+  busy: boolean
+  act: TeamAct
 }): React.JSX.Element {
   const [missions, setMissions] = useState<TeamMissionRow[]>([])
   const [triggers, setTriggers] = useState<TeamTriggerSettings | null>(null)
@@ -102,6 +106,7 @@ export function TeamAutomationsPanel({
             >
               <Switch
                 checked={mission.enabled === 1}
+                disabled={busy}
                 onCheckedChange={(enabled) =>
                   run(() =>
                     setTeamMissionEnabled(target, { team: teamId, id: mission.id, enabled })
@@ -118,6 +123,7 @@ export function TeamAutomationsPanel({
               <Button
                 size="icon-xs"
                 variant="ghost"
+                disabled={busy}
                 aria-label={translate('team.auto.remove', 'Remove mission')}
                 onClick={() =>
                   run(() => removeTeamMission(target, { team: teamId, id: mission.id }))
@@ -134,6 +140,7 @@ export function TeamAutomationsPanel({
               key={template.id}
               size="xs"
               variant="secondary"
+              disabled={busy}
               onClick={() =>
                 run(() =>
                   addTeamMission(target, {
@@ -177,7 +184,9 @@ export function TeamAutomationsPanel({
           />
           <Button
             size="sm"
-            disabled={!name.trim() || !prompt.trim() || !Number.isInteger(minutes) || minutes < 5}
+            disabled={
+              busy || !name.trim() || !prompt.trim() || !Number.isInteger(minutes) || minutes < 5
+            }
             onClick={() =>
               run(async () => {
                 await addTeamMission(target, {
@@ -205,6 +214,7 @@ export function TeamAutomationsPanel({
           </Label>
           <Select
             value={triggers?.triggerMode ?? 'communication-only'}
+            disabled={busy}
             onValueChange={(triggerMode) =>
               run(() => setTeamTriggers(target, { team: teamId, triggerMode }))
             }
@@ -215,7 +225,7 @@ export function TeamAutomationsPanel({
             <SelectContent>
               {TEAM_TRIGGER_MODES.map((mode) => (
                 <SelectItem key={mode} value={mode}>
-                  {mode}
+                  {teamTriggerModeLabel(mode)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -245,6 +255,7 @@ export function TeamAutomationsPanel({
                 <Button
                   size="xs"
                   variant="secondary"
+                  disabled={busy}
                   onClick={() =>
                     run(() => setTeamTriggers(target, { team: teamId, webhook: 'rotate' }))
                   }
@@ -255,6 +266,7 @@ export function TeamAutomationsPanel({
                 <Button
                   size="xs"
                   variant="ghost"
+                  disabled={busy}
                   onClick={() =>
                     run(() => setTeamTriggers(target, { team: teamId, webhook: 'disable' }))
                   }
@@ -266,6 +278,7 @@ export function TeamAutomationsPanel({
               <Button
                 size="xs"
                 variant="secondary"
+                disabled={busy}
                 onClick={() =>
                   run(() => setTeamTriggers(target, { team: teamId, webhook: 'enable' }))
                 }
@@ -290,6 +303,7 @@ export function TeamAutomationsPanel({
             <Button
               size="sm"
               variant="secondary"
+              disabled={busy}
               onClick={() =>
                 run(() =>
                   setTeamTriggers(target, {

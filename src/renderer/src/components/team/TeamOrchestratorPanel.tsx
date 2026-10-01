@@ -6,6 +6,7 @@ import { translate } from '@/i18n/i18n'
 import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
 import { describeTeamMemberActivity } from './TeamAgentCard'
 import { TeamVoicePanel } from './TeamVoicePanel'
+import { isTeamBreakerPause, teamMessageTypeLabel, teamPauseReasonLabel } from './team-enum-labels'
 import { callTeamClosingTime, setTeamMemberCap, updateTeam } from './team-runtime-client'
 import {
   formatUsd,
@@ -14,12 +15,15 @@ import {
   type TeamMember,
   type TeamSnapshot
 } from './team-snapshot-types'
+import type { TeamAct } from './use-team-page-state'
 
 function CapEditor({
   member,
+  busy,
   onSave
 }: {
   member: TeamMember
+  busy: boolean
   onSave: (capUsd: number | null, tokenCap: number | null) => Promise<boolean>
 }): React.JSX.Element {
   const [value, setValue] = useState(member.spend_cap_usd?.toString() ?? '')
@@ -48,7 +52,7 @@ function CapEditor({
       <Button
         size="xs"
         variant="secondary"
-        disabled={!valid}
+        disabled={busy || !valid}
         onClick={() => void onSave(parsed, parsedTokens)}
       >
         {translate('team.orchestrator.setCap', 'Set cap')}
@@ -61,12 +65,14 @@ export function TeamOrchestratorPanel({
   target,
   snapshot,
   log,
+  busy,
   act
 }: {
   target: RuntimeClientTarget
   snapshot: TeamSnapshot
   log: readonly TeamLogMessage[]
-  act: (mutation: () => Promise<unknown>) => Promise<boolean>
+  busy: boolean
+  act: TeamAct
 }): React.JSX.Element {
   const team = snapshot.team
   const manager = snapshot.members.find((member) => member.is_manager)
@@ -75,7 +81,7 @@ export function TeamOrchestratorPanel({
     null
   )
   const tripped = snapshot.members.filter(
-    (member) => member.pause_reason !== null && member.pause_reason !== undefined
+    (member) => member.paused_at && isTeamBreakerPause(member.pause_reason)
   )
   const routing = manager?.live_handle
     ? log.filter(
@@ -109,6 +115,7 @@ export function TeamOrchestratorPanel({
               <CapEditor
                 key={manager.id}
                 member={manager}
+                busy={busy}
                 onSave={(capUsd, tokenCap) =>
                   act(() =>
                     setTeamMemberCap(target, {
@@ -131,7 +138,14 @@ export function TeamOrchestratorPanel({
           )}
         </section>
         {manager ? (
-          <TeamVoicePanel target={target} teamId={team.id} manager={manager} log={log} act={act} />
+          <TeamVoicePanel
+            target={target}
+            teamId={team.id}
+            manager={manager}
+            log={log}
+            busy={busy}
+            act={act}
+          />
         ) : null}
         <section className="space-y-2 rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
@@ -146,10 +160,8 @@ export function TeamOrchestratorPanel({
           {tripped.length > 0 ? (
             tripped.map((member) => (
               <div key={member.id} className="text-[13px]">
-                {translate('team.orchestrator.trippedReason', '{{name}} stopped: {{reason}}', {
-                  name: member.display_name,
-                  reason: (member.pause_reason ?? '').replace('_', ' ')
-                })}
+                <span className="font-medium">{member.display_name}</span> ·{' '}
+                {teamPauseReasonLabel(member.pause_reason)}
               </div>
             ))
           ) : (
@@ -160,6 +172,7 @@ export function TeamOrchestratorPanel({
           <Button
             size="sm"
             variant={paused ? 'default' : 'secondary'}
+            disabled={busy}
             onClick={() =>
               void act(() =>
                 updateTeam(target, { team: team.id, status: paused ? 'active' : 'paused' })
@@ -174,6 +187,7 @@ export function TeamOrchestratorPanel({
           <Button
             size="sm"
             variant="ghost"
+            disabled={busy}
             onClick={() =>
               void act(() => callTeamClosingTime(target, team.id, Boolean(team.closing_at)))
             }
@@ -194,7 +208,7 @@ export function TeamOrchestratorPanel({
             <div key={message.id} className="rounded-md px-2 py-1.5 hover:bg-accent">
               <div className="text-[12px] text-muted-foreground">
                 #{message.sequence} {name(message.from_handle)} → {name(message.to_handle)} ·{' '}
-                {message.type}
+                {teamMessageTypeLabel(message.type)}
               </div>
               <div className="text-[13px]">{message.subject}</div>
             </div>
