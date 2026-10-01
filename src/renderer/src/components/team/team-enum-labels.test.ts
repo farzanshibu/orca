@@ -3,12 +3,16 @@ import { i18n } from '@/i18n/i18n'
 import { PSEUDO_LOCALIZATION_LOCALE } from '@/i18n/pseudo-localization'
 import { TEAM_CLOSING_WAIT_REASONS } from '../../../../shared/team-closing-wait'
 import { TEAM_TRIGGER_MODES } from '../../../../shared/team-mission-schedule'
-import { TEAM_DISPATCH_WAIT_REASONS } from '../../../../shared/team-task-assignment'
+import {
+  TEAM_DISPATCH_WAIT_REASONS,
+  TEAM_SCHEDULER_WAIT_REASONS
+} from '../../../../shared/team-task-assignment'
 import {
   isTeamBreakerPause,
   readableTeamEnumValue,
   teamActivityKindLabel,
   teamClosingWaitReasonLabel,
+  teamGoalStatusLabel,
   teamMemberLivenessLabel,
   teamMessageTypeLabel,
   teamPauseReasonLabel,
@@ -37,6 +41,8 @@ const MESSAGE_TYPES = [
 const TEAM_STATUSES = ['active', 'paused', 'archived']
 const TASK_STATUSES = ['pending', 'ready', 'dispatched', 'completed', 'failed', 'blocked']
 const TASK_KINDS = ['task', 'goal']
+// What `projectTeamGoals` (team-snapshot.ts) reports for a goal.
+const GOAL_STATUSES = ['open', 'completed', 'cancelled']
 const PAUSE_REASONS = ['operator', 'spend_cap', 'token_cap', 'tool_loop']
 const ACTIVITY_KINDS = [
   'message',
@@ -79,7 +85,12 @@ describe('team enum labels under the pseudo locale', () => {
   })
 
   it('has a localized label for every value the host sends today', () => {
-    expectLocalized(TEAM_DISPATCH_WAIT_REASONS, teamWaitReasonLabel)
+    // One table: a card shows either kind of reason through the same label function.
+    expectLocalized(
+      [...TEAM_DISPATCH_WAIT_REASONS, ...TEAM_SCHEDULER_WAIT_REASONS],
+      teamWaitReasonLabel
+    )
+    expectLocalized(GOAL_STATUSES, teamGoalStatusLabel)
     expectLocalized(TEAM_CLOSING_WAIT_REASONS, teamClosingWaitReasonLabel)
     expectLocalized(TEAM_TRIGGER_MODES, teamTriggerModeLabel)
     expectLocalized(MESSAGE_TYPES, teamMessageTypeLabel)
@@ -97,6 +108,7 @@ describe('team enum labels under the pseudo locale', () => {
     expect(teamWaitReasonLabel('member_on_leave')).toBe('Member on leave')
     expect(teamTaskStatusLabel('in-review')).toBe('In review')
     expect(teamActivityKindLabel('goalReopened')).toBe('Goal reopened')
+    expect(teamGoalStatusLabel('in_review')).toBe('In review')
   })
 })
 

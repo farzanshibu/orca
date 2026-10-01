@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, ListPlus, Send, X, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -8,8 +8,9 @@ import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
 import { AgentTerminalPreview } from '../dashboard-popout/AgentTerminalPreview'
 import { TeamCapabilitiesEditor } from './TeamCapabilitiesEditor'
 import { DictateButton } from './TeamVoicePanel'
+import { TeamActivityList } from './team-activity-list'
 import { teamAgentLabel } from './team-agent-label'
-import { teamMessageTypeLabel } from './team-enum-labels'
+import { buildTeamFeedRows, teamMailRows } from './team-feed-threads'
 import {
   queueTeamMessage,
   readTerminalPtyId,
@@ -18,6 +19,7 @@ import {
   sendToTeamMember
 } from './team-runtime-client'
 import type { TeamLogMessage, TeamMember } from './team-snapshot-types'
+import type { TeamActivity } from './use-team-activity'
 import type { TeamAct } from './use-team-page-state'
 
 function useMemberPtyId(target: RuntimeClientTarget, handle: string | null): string | null {
@@ -49,6 +51,8 @@ export function TeamAgentRoom({
   target,
   teamId,
   member,
+  members,
+  activity,
   log,
   busy,
   act,
@@ -57,6 +61,10 @@ export function TeamAgentRoom({
   target: RuntimeClientTarget
   teamId: string
   member: TeamMember | null
+  /** The roster, for naming the other end of each message. */
+  members: readonly TeamMember[]
+  activity: TeamActivity
+  /** The recent mail with its whole text, which the room shows in place of an event's preview. */
   log: readonly TeamLogMessage[]
   busy: boolean
   act: TeamAct
@@ -66,9 +74,15 @@ export function TeamAgentRoom({
   const draftRef = useRef<HTMLTextAreaElement | null>(null)
   const ptyId = useMemberPtyId(target, member?.live_handle ?? null)
   const handle = member?.live_handle ?? null
-  const conversation = handle
-    ? log.filter((message) => message.from_handle === handle || message.to_handle === handle)
-    : []
+  const memberId = member?.id
+  const conversation = useMemo(
+    () =>
+      memberId
+        ? teamMailRows(buildTeamFeedRows(activity.entries), { kind: 'member', memberId })
+        : [],
+    [activity.entries, memberId]
+  )
+  const fullBodies = useMemo(() => new Map(log.map((message) => [message.id, message.body])), [log])
   const queueIds = member?.queue.map((item) => item.id) ?? []
 
   async function submit(mode: 'now' | 'interrupt' | 'queue'): Promise<void> {
@@ -118,32 +132,20 @@ export function TeamAgentRoom({
         ) : null}
         <div className="grid min-h-0 flex-1 grid-cols-2 gap-3">
           <div className="flex min-h-0 flex-col gap-3">
-            <div className="scrollbar-sleek min-h-0 flex-1 space-y-2 overflow-y-auto rounded-md border border-border p-3">
-              {conversation.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground">
-                  {translate('team.room.empty', 'No team mail to or from this member yet.')}
-                </p>
-              ) : (
-                conversation.toReversed().map((message) => (
-                  <div key={message.id} className="space-y-0.5">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-                      {message.from_handle === handle
-                        ? translate('team.room.sent', 'Sent · {{type}}', {
-                            type: teamMessageTypeLabel(message.type)
-                          })
-                        : translate('team.room.received', 'Received · {{type}}', {
-                            type: teamMessageTypeLabel(message.type)
-                          })}
-                    </div>
-                    <div className="text-[13px] font-medium">{message.subject}</div>
-                    {message.body ? (
-                      <div className="whitespace-pre-wrap text-[12px] text-muted-foreground">
-                        {message.body}
-                      </div>
-                    ) : null}
-                  </div>
-                ))
-              )}
+            <div className="flex min-h-0 flex-1 flex-col rounded-md border border-border p-1">
+              <TeamActivityList
+                // Each member's mail starts pinned to its own newest message.
+                key={memberId}
+                rows={conversation}
+                members={members}
+                fullBodies={fullBodies}
+                bodiesOpen
+                emptyLabel={
+                  activity.loaded
+                    ? translate('team.room.empty', 'No team mail to or from this member yet.')
+                    : null
+                }
+              />
             </div>
             <div className="space-y-1">
               <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">

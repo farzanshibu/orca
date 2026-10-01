@@ -2,19 +2,20 @@ import React from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
+import { TeamFloorWithFeed } from './TeamActivityFeed'
 import { TeamAgentCard } from './TeamAgentCard'
 import { TeamAutomationsPanel } from './TeamAutomationsPanel'
 import { TeamInbox } from './TeamInbox'
 import { TeamMemoryPanel } from './TeamMemoryPanel'
 import { TeamOfficeFloor } from './TeamOfficeFloor'
 import { TeamOrchestratorPanel } from './TeamOrchestratorPanel'
-import { TeamTaskBoard } from './TeamTaskBoard'
-import { TeamTaskComposer } from './TeamTaskComposer'
+import { TeamTasksTab } from './TeamTasksTab'
 import type { TeamAttention } from './team-attention'
 import { isTeamPageTab } from './team-page-tab'
 import { runTeamMemberAction, type TeamMemberDraft } from './team-runtime-client'
 import type { TeamSnapshot } from './team-snapshot-types'
 import { teamMemberCurrentTask } from './team-task-owner'
+import type { TeamActivity } from './use-team-activity'
 import { useTeamClock } from './use-team-clock'
 import type { TeamAct, TeamPageState } from './use-team-page-state'
 
@@ -22,6 +23,7 @@ export function TeamPageTabs({
   state,
   snapshot,
   attention,
+  activity,
   scoped,
   onOpenRoom,
   onAddMember
@@ -29,6 +31,7 @@ export function TeamPageTabs({
   state: TeamPageState
   snapshot: TeamSnapshot
   attention: TeamAttention
+  activity: TeamActivity
   /** `act` bound to one key, with whether that key is in flight, so only its controls disable. */
   scoped: (key: string) => { busy: boolean; act: TeamAct }
   onOpenRoom: (memberId: string) => void
@@ -68,17 +71,19 @@ export function TeamPageTabs({
         <TabsTrigger value="memory">{translate('team.tab.memory', 'Memory')}</TabsTrigger>
       </TabsList>
       <TabsContent value="floor" className="flex min-h-0">
-        <TeamOfficeFloor
-          // Seats are remembered per mounted floor, so another team must start from an empty one.
-          key={team}
-          teamName={snapshot.team.name}
-          members={snapshot.members}
-          tasks={snapshot.tasks}
-          log={state.log}
-          attention={attention}
-          onOpenRoom={onOpenRoom}
-          onAddMember={onAddMember}
-        />
+        <TeamFloorWithFeed activity={activity} members={snapshot.members}>
+          <TeamOfficeFloor
+            // Seats are remembered per mounted floor, so another team must start from an empty one.
+            key={team}
+            teamName={snapshot.team.name}
+            members={snapshot.members}
+            tasks={snapshot.tasks}
+            log={state.log}
+            attention={attention}
+            onOpenRoom={onOpenRoom}
+            onAddMember={onAddMember}
+          />
+        </TeamFloorWithFeed>
       </TabsContent>
       <TabsContent value="agents" className="min-h-0">
         <div className="scrollbar-sleek h-full overflow-y-auto">
@@ -112,21 +117,27 @@ export function TeamPageTabs({
           target={target}
           snapshot={snapshot}
           log={state.log}
+          activity={activity}
           {...scoped('orchestrator')}
         />
       </TabsContent>
       <TabsContent value="tasks" className="flex min-h-0">
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <TeamTaskComposer target={target} teamId={team} {...scoped('task-create')} />
-          <TeamTaskBoard tasks={snapshot.tasks} members={snapshot.members} now={now} />
-        </div>
+        <TeamTasksTab
+          // What the host answered for an assignment belongs to the team it was made on.
+          key={team}
+          target={target}
+          snapshot={snapshot}
+          now={now}
+          pendingActions={pendingActions}
+          act={act}
+        />
       </TabsContent>
       <TabsContent value="inbox" className="flex min-h-0">
         <TeamInbox
           target={target}
           snapshot={snapshot}
           attention={attention}
-          log={state.log}
+          activity={activity}
           pendingActions={pendingActions}
           act={act}
           onOpenRoom={onOpenRoom}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Moon, Pause, Play, ShieldAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,15 +6,17 @@ import { translate } from '@/i18n/i18n'
 import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
 import { describeTeamMemberActivity } from './TeamAgentCard'
 import { TeamVoicePanel } from './TeamVoicePanel'
-import { isTeamBreakerPause, teamMessageTypeLabel, teamPauseReasonLabel } from './team-enum-labels'
+import { TeamActivityList } from './team-activity-list'
+import { isTeamBreakerPause, teamPauseReasonLabel } from './team-enum-labels'
+import { buildTeamFeedRows, teamMailRows } from './team-feed-threads'
 import { callTeamClosingTime, setTeamMemberCap, updateTeam } from './team-runtime-client'
 import {
   formatUsd,
-  teamMemberForHandle,
   type TeamLogMessage,
   type TeamMember,
   type TeamSnapshot
 } from './team-snapshot-types'
+import type { TeamActivity } from './use-team-activity'
 import type { TeamAct } from './use-team-page-state'
 
 function CapEditor({
@@ -65,12 +67,15 @@ export function TeamOrchestratorPanel({
   target,
   snapshot,
   log,
+  activity,
   busy,
   act
 }: {
   target: RuntimeClientTarget
   snapshot: TeamSnapshot
+  /** What the manager wrote, for reading it aloud. */
   log: readonly TeamLogMessage[]
+  activity: TeamActivity
   busy: boolean
   act: TeamAct
 }): React.JSX.Element {
@@ -83,17 +88,16 @@ export function TeamOrchestratorPanel({
   const tripped = snapshot.members.filter(
     (member) => member.paused_at && isTeamBreakerPause(member.pause_reason)
   )
-  const routing = manager?.live_handle
-    ? log.filter(
-        (message) =>
-          message.from_handle === manager.live_handle ||
-          message.to_handle === manager.live_handle ||
-          message.to_handle === `run:${team.run_id}`
-      )
-    : log
-  const name = (handle: string) =>
-    teamMemberForHandle(snapshot.members, handle)?.display_name ??
-    (handle === `run:${team.run_id}` ? translate('team.orchestrator.manager', 'manager') : handle)
+  const managerId = manager?.id
+  // Mail through the manager; with no manager yet, all of the team's mail.
+  const routing = useMemo(
+    () =>
+      teamMailRows(
+        buildTeamFeedRows(activity.entries),
+        managerId ? { kind: 'member', memberId: managerId } : { kind: 'all' }
+      ),
+    [activity.entries, managerId]
+  )
   const paused = team.status === 'paused'
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[minmax(280px,1fr)_2fr] gap-4">
@@ -203,22 +207,13 @@ export function TeamOrchestratorPanel({
         <div className="pb-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
           {translate('team.orchestrator.routingLog', 'Routing log')}
         </div>
-        <div className="scrollbar-sleek min-h-0 flex-1 space-y-1 overflow-y-auto">
-          {routing.map((message) => (
-            <div key={message.id} className="rounded-md px-2 py-1.5 hover:bg-accent">
-              <div className="text-[12px] text-muted-foreground">
-                #{message.sequence} {name(message.from_handle)} → {name(message.to_handle)} ·{' '}
-                {teamMessageTypeLabel(message.type)}
-              </div>
-              <div className="text-[13px]">{message.subject}</div>
-            </div>
-          ))}
-          {routing.length === 0 ? (
-            <p className="text-[13px] text-muted-foreground">
-              {translate('team.orchestrator.noRouting', 'No routing yet.')}
-            </p>
-          ) : null}
-        </div>
+        <TeamActivityList
+          rows={routing}
+          members={snapshot.members}
+          emptyLabel={
+            activity.loaded ? translate('team.orchestrator.noRouting', 'No routing yet.') : null
+          }
+        />
       </section>
     </div>
   )

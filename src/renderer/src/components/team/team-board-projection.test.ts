@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { isExternalTeamMessage } from './TeamInbox'
 import { parseSqliteUtc, visibleTeamTasks } from './TeamTaskBoard'
 import type { TeamTask } from './team-snapshot-types'
 
@@ -28,11 +27,5 @@ describe('team board projection', () => {
       null,
       '2026-09-28 11:45:00'
     ])
-  })
-
-  it('separates outside mail from agent chatter', () => {
-    expect(isExternalTeamMessage({ from_handle: 'orca:breaker' })).toBe(true)
-    expect(isExternalTeamMessage({ from_handle: 'external:webhook' })).toBe(true)
-    expect(isExternalTeamMessage({ from_handle: 'term_1' })).toBe(false)
   })
 })

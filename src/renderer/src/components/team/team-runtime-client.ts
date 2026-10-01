@@ -1,7 +1,14 @@
 import { callRuntimeRpc } from '@/runtime/runtime-rpc-client'
 import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
+import type { TeamActivityPage } from '../../../../shared/team-activity-event'
 import type { TeamHireTemplate, TeamMemberCapabilities } from '../../../../shared/team-capabilities'
+import type {
+  TeamGoalCloseResult,
+  TeamGoalCreateResult,
+  TeamTaskCreateResult
+} from '../../../../shared/team-goal'
 import type { TeamMissionSchedule } from '../../../../shared/team-mission-schedule'
+import type { TeamTaskAssignResult } from '../../../../shared/team-task-assignment'
 import type { TeamListEntry, TeamLogMessage, TeamSnapshot } from './team-snapshot-types'
 
 type TeamRef = { team: string }
@@ -14,11 +21,27 @@ export function showTeam(target: RuntimeClientTarget, team: string) {
   return callRuntimeRpc<TeamSnapshot>(target, 'orchestration.teamShow', { team })
 }
 
-export function readTeamLog(target: RuntimeClientTarget, team: string, limit = 100) {
-  return callRuntimeRpc<{ messages: TeamLogMessage[] }>(target, 'orchestration.teamLog', {
-    team,
-    limit
-  })
+export function readTeamLog(
+  target: RuntimeClientTarget,
+  team: string,
+  limit = 100,
+  signal?: AbortSignal
+) {
+  return callRuntimeRpc<{ messages: TeamLogMessage[] }>(
+    target,
+    'orchestration.teamLog',
+    { team, limit },
+    { signal }
+  )
+}
+
+/** Events after `afterSequence`, or the newest ones without it. Only a host with the fan-out capability has it. */
+export function readTeamActivity(
+  target: RuntimeClientTarget,
+  params: TeamRef & { afterSequence?: number; limit?: number },
+  signal?: AbortSignal
+) {
+  return callRuntimeRpc<TeamActivityPage>(target, 'orchestration.teamActivity', params, { signal })
 }
 
 export function createTeam(
@@ -242,9 +265,32 @@ export function writeTeamNote(
 
 export function createTeamTask(
   target: RuntimeClientTarget,
-  params: TeamRef & { title: string; spec?: string; enrich?: boolean }
+  params: TeamRef & { title: string; spec?: string }
 ) {
-  return callRuntimeRpc(target, 'orchestration.teamTaskCreate', params)
+  return callRuntimeRpc<TeamTaskCreateResult>(target, 'orchestration.teamTaskCreate', params)
+}
+
+/** Files a goal and, for the operator, queues the planning prompt for the manager. */
+export function createTeamGoal(
+  target: RuntimeClientTarget,
+  params: TeamRef & { title: string; spec?: string }
+) {
+  return callRuntimeRpc<TeamGoalCreateResult>(target, 'orchestration.teamGoalCreate', params)
+}
+
+/** Completes a goal, or with `cancel` stops it; without `cancel` the host refuses unfinished tasks. */
+export function closeTeamGoal(
+  target: RuntimeClientTarget,
+  params: TeamRef & { goal: string; summary?: string; cancel?: boolean }
+) {
+  return callRuntimeRpc<TeamGoalCloseResult>(target, 'orchestration.teamGoalClose', params)
+}
+
+export function assignTeamTask(
+  target: RuntimeClientTarget,
+  params: TeamRef & { task: string } & ({ member: string } | { unassign: true })
+) {
+  return callRuntimeRpc<TeamTaskAssignResult>(target, 'orchestration.teamTaskAssign', params)
 }
 
 export function callTeamClosingTime(target: RuntimeClientTarget, team: string, cancel = false) {

@@ -1,7 +1,7 @@
 import { translate } from '@/i18n/i18n'
 import type { TeamClosingWaitReason } from '../../../../shared/team-closing-wait'
 import type { TeamTriggerMode } from '../../../../shared/team-mission-schedule'
-import type { TeamDispatchWaitReason } from '../../../../shared/team-task-assignment'
+import type { TeamWorkWaitReason } from '../../../../shared/team-task-assignment'
 import type { TeamMemberLiveness } from './team-member-liveness'
 
 // Every raw value the host sends that the team UI shows goes through here, so none is rendered as-is.
@@ -69,8 +69,15 @@ const WAIT_REASON_LABELS = {
   member_unverifiable: () =>
     translate('team.wait.memberUnverifiable', 'No recent update from the member'),
   manager_not_running: () => translate('team.wait.managerNotRunning', 'Manager is not running'),
-  team_inactive: () => translate('team.wait.teamInactive', 'Team is paused or closing')
-} satisfies Record<TeamDispatchWaitReason, () => string>
+  team_inactive: () => translate('team.wait.teamInactive', 'Team is paused or closing'),
+  member_needs_input: () => translate('team.wait.memberNeedsInput', 'Member is waiting on you'),
+  team_at_capacity: () =>
+    translate('team.wait.teamAtCapacity', 'Team is at its limit of tasks running at once'),
+  retry_backoff: () => translate('team.wait.retryBackoff', 'Start failed; Orca retries shortly'),
+  escalated: () =>
+    translate('team.wait.escalated', 'Starts kept failing; the manager has to assign it again'),
+  task_taken: () => translate('team.wait.taskTaken', 'Already started, or no longer theirs')
+} satisfies Record<TeamWorkWaitReason, () => string>
 
 /** Why an assigned task has not started. */
 export function teamWaitReasonLabel(reason: string | null | undefined): string {
@@ -112,6 +119,16 @@ const TASK_KIND_LABELS = {
 
 export function teamTaskKindLabel(kind: string | null | undefined): string {
   return labelFrom(TASK_KIND_LABELS, kind)
+}
+
+const GOAL_STATUS_LABELS = {
+  open: () => translate('team.goalStatus.open', 'Open'),
+  completed: () => translate('team.goalStatus.completed', 'Completed'),
+  cancelled: () => translate('team.goalStatus.cancelled', 'Cancelled')
+} satisfies LabelTable
+
+export function teamGoalStatusLabel(status: string | null | undefined): string {
+  return labelFrom(GOAL_STATUS_LABELS, status)
 }
 
 const TEAM_STATUS_LABELS = {
@@ -176,4 +193,19 @@ const ACTIVITY_KIND_LABELS = {
 /** The kind of an `orchestration.teamActivity` event. */
 export function teamActivityKindLabel(kind: string | null | undefined): string {
   return labelFrom(ACTIVITY_KIND_LABELS, kind)
+}
+
+const ACTIVITY_PARTY_LABELS = {
+  // A member the roster no longer lists, so there is no name to show.
+  member: () => translate('team.activityParty.member', 'Former member'),
+  operator: () => translate('team.activityParty.operator', 'You'),
+  external: () => translate('team.activityParty.external', 'Automation'),
+  system: () => translate('team.activityParty.system', 'Orca'),
+  agent: () => translate('team.activityParty.agent', 'Another agent'),
+  team: () => translate('team.activityParty.team', 'Team')
+} satisfies LabelTable
+
+/** One end of an activity event that is not a member on the roster. */
+export function teamActivityPartyLabel(party: string | null | undefined): string {
+  return labelFrom(ACTIVITY_PARTY_LABELS, party)
 }

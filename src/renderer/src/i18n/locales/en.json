@@ -18525,8 +18525,6 @@
     },
     "room": {
       "empty": "No team mail to or from this member yet.",
-      "sent": "Sent · {{type}}",
-      "received": "Received · {{type}}",
       "queue": "Queue · sent in order when the agent is idle",
       "moveUp": "Move up",
       "moveDown": "Move down",
@@ -18551,12 +18549,12 @@
       "chatter": "Between agents",
       "external": "From outside",
       "noExternal": "Nothing from automations, webhooks, or Orca yet.",
-      "permission": "Waiting at a permission prompt in its terminal."
+      "permission": "Waiting at a permission prompt in its terminal.",
+      "noChatter": "No messages between agents yet."
     },
     "orchestrator": {
       "noCap": "No $ cap",
       "setCap": "Set cap",
-      "manager": "manager",
       "title": "Orchestrator",
       "spendVsCap": "Spend {{spend}} of cap {{cap}}",
       "noManager": "This team has no manager yet. Add a member and mark it as manager.",
@@ -18582,7 +18580,10 @@
       "importTemplate": "Import template",
       "reconnecting": "Reconnecting…",
       "dismissError": "Dismiss",
-      "loading": "Loading team…"
+      "loading": "Loading team…",
+      "newGoal": "New goal",
+      "addManager": "Add a manager",
+      "moreActions": "More team actions"
     },
     "tab": {
       "agents": "Agents",
@@ -18624,7 +18625,48 @@
       "unassigned": "Unassigned",
       "newPlaceholder": "New task…",
       "add": "Add task",
-      "enrich": "Ask manager to write it up"
+      "empty": "No goals or tasks yet. Use New goal to hand the manager something to plan, or add a single task above.",
+      "noGoalLane": "Tasks without a goal",
+      "goalUnplanned": "No tasks filed under this goal yet."
+    },
+    "goal": {
+      "title": "New goal",
+      "description": "Orca queues this for {{manager}} and asks it to split the goal into tasks and assign them.",
+      "descriptionNoManager": "Orca asks the manager to split a goal into tasks and assign them.",
+      "fieldLabel": "Goal",
+      "placeholder": "What should the team get done?",
+      "submit": "Send to manager",
+      "hostUnsupported": "The Orca on this host is too old to plan goals. Update it to give the team a goal.",
+      "teamClosing": "Closing time is under way. Call it off on the Orchestrator tab to give the team a goal.",
+      "teamPaused": "This team is paused. Resume it on the Orchestrator tab to give it a goal.",
+      "teamInactive": "This team takes no goals while it is: {{status}}",
+      "noManager": "This team has no manager to plan a goal. Add one first.",
+      "managerPaused": "{{manager}} is paused, so the goal waits in its queue until you resume it.",
+      "managerStopped": "{{manager}} is not running, so the goal waits in its queue until you start it.",
+      "managerSilent": "No recent update from {{manager}}. The goal waits in its queue until its agent is seen idle.",
+      "behindQueue": "{{manager}} has other queued messages. The goal is sent after them.",
+      "queued": "Goal {{goal}} is queued for the manager.",
+      "filedOnly": "Goal {{goal}} was filed. The manager was not asked to plan it."
+    },
+    "goalLane": {
+      "reviewRequested": "Manager asked to review",
+      "progress": "{{done}} of {{total}} done",
+      "noTasks": "No tasks yet",
+      "close": "Close goal",
+      "cancel": "Cancel goal"
+    },
+    "goalCancel": {
+      "title": "Cancel goal {{goal}}?",
+      "description": "Its tasks that have not started are cancelled with it. Tasks already running finish on their own. This cannot be undone.",
+      "keep": "Keep goal",
+      "done": "Goal {{goal}} cancelled. Tasks cancelled: {{cancelled}}. Still running: {{running}}."
+    },
+    "assign": {
+      "menuLabel": "Assign to",
+      "unassign": "Unassign",
+      "started": "Started",
+      "assigned": "Assigned, not started yet",
+      "failed": "Could not start: {{error}}"
     },
     "caps": {
       "badJson": "MCP servers must be a JSON array.",
@@ -18730,7 +18772,12 @@
       "memberNotRunning": "Member is not running",
       "memberUnverifiable": "No recent update from the member",
       "managerNotRunning": "Manager is not running",
-      "teamInactive": "Team is paused or closing"
+      "teamInactive": "Team is paused or closing",
+      "memberNeedsInput": "Member is waiting on you",
+      "teamAtCapacity": "Team is at its limit of tasks running at once",
+      "retryBackoff": "Start failed; Orca retries shortly",
+      "escalated": "Starts kept failing; the manager has to assign it again",
+      "taskTaken": "Already started, or no longer theirs"
     },
     "closingWait": {
       "working": "Finishing its current step",
@@ -18751,6 +18798,11 @@
     "taskKind": {
       "task": "Task",
       "goal": "Goal"
+    },
+    "goalStatus": {
+      "open": "Open",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
     },
     "status": {
       "active": "Active",
@@ -18793,6 +18845,43 @@
       "memberState": "Member started or stopped",
       "memberPaused": "Member paused",
       "memberResumed": "Member resumed"
+    },
+    "feed": {
+      "to": "to",
+      "read": "Read",
+      "openThread": "Show the {{count}} messages of this thread",
+      "hideBody": "Hide the message",
+      "showBody": "Show the message",
+      "newCount": "{{count}} new",
+      "type": {
+        "note": "Note"
+      },
+      "recipientsAndMore": "{{names}} +{{count}}",
+      "family": {
+        "all": "All",
+        "mail": "Mail",
+        "work": "Work",
+        "people": "People"
+      },
+      "threadOnly": "Showing one thread",
+      "showAll": "Show everything",
+      "familyFilter": "Kind of activity",
+      "memberFilter": "Member",
+      "everyone": "Everyone",
+      "nothingMatches": "Nothing matches these filters.",
+      "empty": "Nothing has happened on this team yet.",
+      "title": "Activity",
+      "legacy": "Messages only on this host",
+      "collapse": "Hide activity",
+      "expand": "Show activity"
+    },
+    "activityParty": {
+      "member": "Former member",
+      "operator": "You",
+      "external": "Automation",
+      "system": "Orca",
+      "agent": "Another agent",
+      "team": "Team"
     }
   }
 }

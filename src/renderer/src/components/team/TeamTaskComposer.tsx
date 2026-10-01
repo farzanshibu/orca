@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Plus, Sparkles } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { translate } from '@/i18n/i18n'
@@ -7,7 +7,10 @@ import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
 import { createTeamTask } from './team-runtime-client'
 import type { TeamAct } from './use-team-page-state'
 
-/** File a task on the board as written, or hand a rough ask to the manager to turn into one. */
+/**
+ * Files one task on the board exactly as written. Work the manager should plan goes through
+ * New goal instead, which is the only "ask the manager" flow.
+ */
 export function TeamTaskComposer({
   target,
   teamId,
@@ -20,34 +23,30 @@ export function TeamTaskComposer({
   act: TeamAct
 }): React.JSX.Element {
   const [title, setTitle] = useState('')
-  const submit = (enrich: boolean) =>
-    void act(() => createTeamTask(target, { team: teamId, title, enrich })).then(
-      (ok) => ok && setTitle('')
-    )
+  const canSubmit = !busy && title.trim().length > 0
+  const submit = (): void => {
+    if (canSubmit) {
+      void act(() => createTeamTask(target, { team: teamId, title })).then(
+        (ok) => ok && setTitle('')
+      )
+    }
+  }
   return (
     <div className="flex shrink-0 gap-1.5">
       <Input
         value={title}
         onChange={(event) => setTitle(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+            event.preventDefault()
+            submit()
+          }
+        }}
         placeholder={translate('team.tasks.newPlaceholder', 'New task…')}
       />
-      <Button
-        size="sm"
-        variant="secondary"
-        disabled={busy || !title.trim()}
-        onClick={() => submit(false)}
-      >
+      <Button size="sm" variant="secondary" disabled={!canSubmit} onClick={submit}>
         <Plus />
         {translate('team.tasks.add', 'Add task')}
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled={busy || !title.trim()}
-        onClick={() => submit(true)}
-      >
-        <Sparkles />
-        {translate('team.tasks.enrich', 'Ask manager to write it up')}
       </Button>
     </div>
   )

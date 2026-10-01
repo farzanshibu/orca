@@ -1,25 +1,17 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Check, SquareArrowOutUpRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { translate } from '@/i18n/i18n'
 import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
+import { TeamActivityList } from './team-activity-list'
 import { teamAgentLabel } from './team-agent-label'
 import type { TeamAttention, TeamAttentionItem } from './team-attention'
-import { teamMessageTypeLabel } from './team-enum-labels'
+import { buildTeamFeedRows, teamMailRows } from './team-feed-threads'
 import { answerTeamQuestion, decideTeamHire, resolveTeamGate } from './team-runtime-client'
-import {
-  teamMemberForHandle,
-  type TeamLogMessage,
-  type TeamMember,
-  type TeamSnapshot
-} from './team-snapshot-types'
+import type { TeamSnapshot } from './team-snapshot-types'
+import type { TeamActivity } from './use-team-activity'
 import type { TeamAct } from './use-team-page-state'
-
-/** Mail Orca or an outside trigger wrote into the team, as opposed to members talking. */
-export function isExternalTeamMessage(message: Pick<TeamLogMessage, 'from_handle'>): boolean {
-  return message.from_handle.startsWith('orca:') || message.from_handle.startsWith('external:')
-}
 
 function parseGateOptions(raw: string): string[] {
   try {
@@ -200,30 +192,11 @@ function WaitingItem({
   )
 }
 
-function LogRow({
-  message,
-  members
-}: {
-  message: TeamLogMessage
-  members: readonly TeamMember[]
-}): React.JSX.Element {
-  const name = (handle: string) => teamMemberForHandle(members, handle)?.display_name ?? handle
-  return (
-    <div className="rounded-md px-2 py-1.5 hover:bg-accent">
-      <div className="text-[12px] text-muted-foreground">
-        {name(message.from_handle)} → {name(message.to_handle)} ·{' '}
-        {teamMessageTypeLabel(message.type)}
-      </div>
-      <div className="text-[13px]">{message.subject}</div>
-    </div>
-  )
-}
-
 export function TeamInbox({
   target,
   snapshot,
   attention,
-  log,
+  activity,
   pendingActions,
   act,
   onOpenRoom
@@ -232,16 +205,16 @@ export function TeamInbox({
   snapshot: TeamSnapshot
   /** The list the tab count and the floor markers read too. */
   attention: TeamAttention
-  log: readonly TeamLogMessage[]
+  activity: TeamActivity
   /** Each row's action runs under its item id, so only that row disables. */
   pendingActions: readonly string[]
   act: TeamAct
   onOpenRoom: (memberId: string) => void
 }): React.JSX.Element {
   const members = snapshot.members
-  const external = log.filter(isExternalTeamMessage)
-  const chatter = log.filter((message) => !isExternalTeamMessage(message))
-  const column = 'scrollbar-sleek flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto'
+  const rows = useMemo(() => buildTeamFeedRows(activity.entries), [activity.entries])
+  const chatter = teamMailRows(rows, { kind: 'between-agents' })
+  const external = teamMailRows(rows, { kind: 'from-outside' })
   return (
     <div className="grid min-h-0 flex-1 grid-cols-3 gap-4">
       <section className="flex min-h-0 flex-col">
@@ -249,7 +222,7 @@ export function TeamInbox({
           label={translate('team.inbox.waiting', 'Waiting on you')}
           count={attention.count}
         />
-        <div className={column}>
+        <div className="scrollbar-sleek flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
           {attention.items.map((item) => (
             <WaitingItem
               key={item.id}
@@ -273,31 +246,33 @@ export function TeamInbox({
           label={translate('team.inbox.chatter', 'Between agents')}
           count={chatter.length}
         />
-        <div className={column}>
-          {chatter.map((message) => (
-            <LogRow key={message.id} message={message} members={members} />
-          ))}
-        </div>
+        <TeamActivityList
+          rows={chatter}
+          members={members}
+          emptyLabel={
+            activity.loaded
+              ? translate('team.inbox.noChatter', 'No messages between agents yet.')
+              : null
+          }
+        />
       </section>
       <section className="flex min-h-0 flex-col">
         <QueueHeading
           label={translate('team.inbox.external', 'From outside')}
           count={external.length}
         />
-        <div className={column}>
-          {external.length === 0 ? (
-            <p className="text-[13px] text-muted-foreground">
-              {translate(
-                'team.inbox.noExternal',
-                'Nothing from automations, webhooks, or Orca yet.'
-              )}
-            </p>
-          ) : (
-            external.map((message) => (
-              <LogRow key={message.id} message={message} members={members} />
-            ))
-          )}
-        </div>
+        <TeamActivityList
+          rows={external}
+          members={members}
+          emptyLabel={
+            activity.loaded
+              ? translate(
+                  'team.inbox.noExternal',
+                  'Nothing from automations, webhooks, or Orca yet.'
+                )
+              : null
+          }
+        />
       </section>
     </div>
   )

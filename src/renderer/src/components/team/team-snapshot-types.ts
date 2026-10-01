@@ -2,7 +2,7 @@
 // Optional fields are ones an older host does not send.
 
 import type { TeamClosingWaitReason } from '../../../../shared/team-closing-wait'
-import type { TeamDispatchWaitReason } from '../../../../shared/team-task-assignment'
+import type { TeamWorkWaitReason } from '../../../../shared/team-task-assignment'
 
 export type TeamSummary = {
   id: string
@@ -49,7 +49,7 @@ export type TeamMember = {
   queue: TeamQueueItem[]
   current_task?: TeamMemberCurrentTask | null
   /** Why this member's assigned task has not started. */
-  waiting_reason?: TeamDispatchWaitReason | (string & {}) | null
+  waiting_reason?: TeamWorkWaitReason | (string & {}) | null
 }
 
 export type TeamTask = {

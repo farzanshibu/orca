@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { FileInput, Plus, UserPlus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select'
 import { translate } from '@/i18n/i18n'
 import { TeamAgentRoom } from './TeamAgentRoom'
+import { TeamPageHeaderActions } from './TeamPageHeaderActions'
 import { TeamActionError, TeamConnectionLine, TeamLoadingLine } from './TeamPageNotices'
 import { TeamPageTabs } from './TeamPageTabs'
 import { TeamCreateDialog, TeamMemberDialog } from './TeamSetupDialogs'
@@ -21,11 +22,14 @@ import {
   importTeamMember,
   type TeamMemberDraft
 } from './team-runtime-client'
+import { useTeamActivity } from './use-team-activity'
 import { useTeamPageState, type TeamAct } from './use-team-page-state'
 
 export default function TeamPage(): React.JSX.Element {
   const state = useTeamPageState()
   const { target, snapshot, act, pendingActions } = state
+  // Polled here, above the tabs, so the feed keeps what it has when the tab changes.
+  const activity = useTeamActivity(state)
   const [createOpen, setCreateOpen] = useState(false)
   const [memberOpen, setMemberOpen] = useState(false)
   const [memberInitial, setMemberInitial] = useState<Partial<TeamMemberDraft> | undefined>()
@@ -47,7 +51,7 @@ export default function TeamPage(): React.JSX.Element {
   })
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-background pt-5 md:pt-6">
+    <div className="@container/team-page flex h-full min-h-0 w-full flex-col bg-background pt-5 md:pt-6">
       <header
         className="flex shrink-0 flex-wrap items-center gap-2 px-3 pb-3 md:px-5"
         style={{ paddingRight: 'max(0.75rem, var(--window-controls-width, 0px))' }}
@@ -70,27 +74,16 @@ export default function TeamPage(): React.JSX.Element {
           </Select>
         ) : null}
         <div className="flex-1" />
-        {snapshot ? (
-          <>
-            <Button size="sm" variant="secondary" onClick={() => openMemberDialog()}>
-              <UserPlus />
-              {translate('team.page.addMember', 'Add member')}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setImportOpen(true)}>
-              <FileInput />
-              {translate('team.page.importTemplate', 'Import template')}
-            </Button>
-          </>
-        ) : null}
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={!state.repoId}
-          onClick={() => setCreateOpen(true)}
-        >
-          <Plus />
-          {translate('team.page.newTeam', 'New team')}
-        </Button>
+        <TeamPageHeaderActions
+          target={target}
+          snapshot={snapshot}
+          canCreateTeam={Boolean(state.repoId)}
+          pendingActions={pendingActions}
+          act={act}
+          onAddMember={openMemberDialog}
+          onImportTemplate={() => setImportOpen(true)}
+          onNewTeam={() => setCreateOpen(true)}
+        />
       </header>
       {state.actionError ? (
         <TeamActionError message={state.actionError} onDismiss={state.dismissActionError} />
@@ -108,6 +101,7 @@ export default function TeamPage(): React.JSX.Element {
             state={state}
             snapshot={snapshot}
             attention={attention}
+            activity={activity}
             scoped={scoped}
             onOpenRoom={setRoomMemberId}
             onAddMember={openMemberDialog}
@@ -186,6 +180,8 @@ export default function TeamPage(): React.JSX.Element {
           target={target}
           teamId={snapshot.team.id}
           member={roomMember}
+          members={snapshot.members}
+          activity={activity}
           log={state.log}
           {...scoped('room')}
           onClose={() => setRoomMemberId(null)}
