@@ -78,7 +78,8 @@ export function TeamPageTabs({
             teamName={snapshot.team.name}
             members={snapshot.members}
             tasks={snapshot.tasks}
-            log={state.log}
+            goals={snapshot.goals}
+            activity={activity}
             attention={attention}
             onOpenRoom={onOpenRoom}
             onAddMember={onAddMember}

@@ -2,6 +2,9 @@ import React, { useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
 import { translate } from '@/i18n/i18n'
+import { useOfficeProof } from './office-choreography-proof'
+import { FloorActors } from './office-floor-actors'
+import { FloorBubbles } from './office-floor-bubbles'
 import { SeatedCharacter } from './office-floor-character'
 import type { ScreenState } from './office-floor-desk-art'
 import {
@@ -12,21 +15,25 @@ import {
 import { FloorOverlay, type FloorBadge, type FloorNameplate } from './office-floor-overlay'
 import { officeFloorPlan, type FloorDesk, type OfficeFloorPlan } from './office-floor-plan'
 import { DeskSetup } from './office-floor-pods'
+import { FloorHighlightRing } from './office-floor-props'
 import { FloorRoster, floorActivityLabel, type PlacedMember } from './office-floor-roster'
 import { OfficeBackdrop } from './office-floor-scene'
 import type { FloorSeating } from './office-floor-seating'
 import { memberLook } from './office-floor-sprite'
 import { floorActivity, summarizeFloor } from './office-floor-state'
-import { parseSqliteUtc } from './TeamTaskBoard'
+import { FloorWhiteboard } from './office-floor-whiteboard'
+import { floorWork } from './office-floor-work'
+import { FloorWorkArt, FloorWorkOverlay } from './office-floor-work-layers'
 import type { TeamAttention } from './team-attention'
+import { useHighlightedTeamMemberIds } from './team-floor-highlight'
 import { teamMemberLiveness } from './team-member-liveness'
-import type { TeamLogMessage, TeamMember, TeamTask } from './team-snapshot-types'
+import type { TeamGoal, TeamMember, TeamTask } from './team-snapshot-types'
 import { teamMemberCurrentTask } from './team-task-owner'
+import { useFloorThoughts } from './use-floor-thoughts'
+import { useOfficeChoreography } from './use-office-choreography'
 import { useOfficeFloorPlan } from './use-office-floor-plan'
-import { useTeamClock } from './use-team-clock'
+import type { TeamActivity } from './use-team-activity'
 
-// Mail newer than this marks the sender and recipient desks, so the floor shows traffic, not history.
-const MAIL_WINDOW_MS = 10_000
 // Upscaling past this makes the pixel art blurry-large on wide monitors.
 const MAX_ART_SCALE = 3
 
@@ -129,26 +136,29 @@ export function TeamOfficeFloor({
   teamName,
   members,
   tasks,
-  log,
+  activity,
   attention,
-  whiteboard,
+  goals,
   onOpenRoom,
   onAddMember
 }: {
   teamName: string
   members: readonly TeamMember[]
   tasks: readonly TeamTask[]
-  log: readonly TeamLogMessage[]
+  /** The team's live activity; the floor acts out what arrives while it is on screen. */
+  activity: Pick<TeamActivity, 'live' | 'epoch'>
   attention: TeamAttention
-  /** What is written on the whiteboard. Nothing supplies it yet, so the board shows scribbles. */
-  whiteboard?: React.ReactNode
+  goals: readonly TeamGoal[] | undefined
   onOpenRoom: (memberId: string) => void
   /** `prefill` is set when a vacant desk was clicked: that pod's role, or the manager's office. */
   onAddMember: (prefill?: DeskHirePrefill) => void
 }): React.JSX.Element {
-  const now = useTeamClock(2_000)
   const frameRef = useRef<HTMLDivElement>(null)
   const { plan, seating } = useOfficeFloorPlan(frameRef, members)
+  // Null except while a rendered probe drives the floor with its own clock and events.
+  const proof = useOfficeProof()
+  const highlighted = useHighlightedTeamMemberIds()
+  const thoughts = useFloorThoughts(members)
   const toolByPane = useAppStore(
     useShallow((state) =>
       Object.fromEntries(
@@ -160,36 +170,33 @@ export function TeamOfficeFloor({
       )
     )
   )
-  const mailHandles = useMemo(() => {
-    const handles = new Set<string>()
-    for (const message of log) {
-      const sent = parseSqliteUtc(message.created_at)
-      if (sent !== null && now - sent < MAIL_WINDOW_MS && message.type !== 'heartbeat') {
-        handles.add(message.from_handle)
-        handles.add(message.to_handle)
-      }
-    }
-    return handles
-  }, [log, now])
   const placed: PlacedMember[] = members.map((member) => {
     const needsYou = attention.memberIds.has(member.id)
     return {
       member,
-      activity: floorActivity({
-        liveness: teamMemberLiveness(member),
-        agentStatus: member.agent_status,
-        paused: Boolean(member.paused_at),
-        needsYou
-      }),
+      activity:
+        proof?.activity.get(member.id) ??
+        floorActivity({
+          liveness: teamMemberLiveness(member),
+          agentStatus: member.agent_status,
+          paused: Boolean(member.paused_at),
+          needsYou
+        }),
       needsYou,
       tool: member.pane_key ? (toolByPane[member.pane_key] ?? '') : '',
-      task: teamMemberCurrentTask(member, tasks),
-      hasMail: member.live_handle !== null && mailHandles.has(member.live_handle)
+      task: teamMemberCurrentTask(member, tasks)
     }
   })
+  const stage = useMemo(() => (plan ? { plan, seating } : null), [plan, seating])
+  const choreography = useOfficeChoreography({ activity, stage, placed, proof })
+  const { scene } = choreography
+  // Whoever is out on an errand is drawn by the actors layer; their chair shows empty meanwhile.
+  const atDesk = (entry: PlacedMember | undefined): entry is PlacedMember =>
+    isPresent(entry) && !scene.poses.has(entry.member.id)
   // Managers come first so the roster leads with whoever runs the team.
   const ordered = [...placed].sort((a, b) => b.member.is_manager - a.member.is_manager)
   const desks = plan ? deskEntries(plan, seating, placed) : []
+  const work = floorWork({ goals, tasks, members, desks, waiting: attention.count })
   const targets: FloorDeskTarget[] = desks.map(({ desk, entry, prefill }) =>
     entry ? { desk, entry } : { desk, entry, prefill }
   )
@@ -211,7 +218,7 @@ export function TeamOfficeFloor({
       : []
   )
   const badges: FloorBadge[] = desks.flatMap(({ desk, entry }) =>
-    entry && (entry.needsYou || entry.hasMail)
+    entry && (entry.needsYou || scene.badges.get(entry.member.id) === 'mail')
       ? [
           {
             id: entry.member.id,
@@ -236,6 +243,9 @@ export function TeamOfficeFloor({
           <div
             role="group"
             aria-label={translate('team.floor.office', 'Office')}
+            data-floor-meeting={scene.meeting ?? undefined}
+            data-floor-clock={choreography.clock.manual ? 'manual' : undefined}
+            data-floor-motion={choreography.reducedMotion ? 'reduced' : undefined}
             className="relative mx-auto overflow-hidden rounded-lg"
             style={{ maxWidth: floorMaxWidth(plan) }}
           >
@@ -244,13 +254,14 @@ export function TeamOfficeFloor({
               aria-hidden="true"
               className="team-office block h-auto w-full"
             >
-              <OfficeBackdrop plan={plan} whiteboardBlank={whiteboard != null} />
+              <OfficeBackdrop plan={plan} whiteboardBlank={work.board !== null} />
+              <FloorWorkArt plan={plan} work={work} />
               {desks.map(({ desk, entry }) => (
                 <DeskSetup
                   key={desk.anchor}
                   desk={desk}
                   state={screenFor(entry)}
-                  occupied={isPresent(entry)}
+                  occupied={atDesk(entry)}
                 />
               ))}
             </svg>
@@ -267,23 +278,42 @@ export function TeamOfficeFloor({
               className="team-office pointer-events-none absolute inset-0 h-full w-full"
             >
               {desks.map(({ desk, entry }) =>
-                isPresent(entry) ? (
-                  <SeatedCharacter
+                atDesk(entry) ? (
+                  <g
                     key={entry.member.id}
-                    desk={desk}
-                    look={memberLook(entry.member.slug, Boolean(entry.member.is_manager))}
-                    screen={screenFor(entry)}
-                  />
+                    data-floor-seated={entry.member.id}
+                    data-activity={entry.activity}
+                    data-highlighted={highlighted.has(entry.member.id) ? 'true' : undefined}
+                  >
+                    <SeatedCharacter
+                      desk={desk}
+                      look={memberLook(entry.member.slug, Boolean(entry.member.is_manager))}
+                      screen={screenFor(entry)}
+                    />
+                    {highlighted.has(entry.member.id) ? (
+                      <FloorHighlightRing at={desk.seat} />
+                    ) : null}
+                  </g>
                 ) : null
               )}
             </svg>
+            {stage ? (
+              <FloorActors
+                stage={stage}
+                placed={placed}
+                choreography={choreography}
+                highlighted={highlighted}
+              />
+            ) : null}
             <FloorOverlay
               plan={plan}
               teamName={teamName}
-              whiteboard={whiteboard}
+              whiteboard={work.board ? <FloorWhiteboard content={work.board} /> : undefined}
               nameplates={nameplates}
               badges={badges}
             />
+            <FloorWorkOverlay plan={plan} work={work} />
+            <FloorBubbles plan={plan} desks={desks} scene={scene} thoughts={thoughts} />
           </div>
         ) : null}
       </div>

@@ -45,12 +45,12 @@ export type TeamActivity = {
   error: string | null
 }
 
-function subscribeToWindowVisibility(listener: () => void): () => void {
+export function subscribeToWindowVisibility(listener: () => void): () => void {
   document.addEventListener('visibilitychange', listener)
   return () => document.removeEventListener('visibilitychange', listener)
 }
 
-function windowIsVisible(): boolean {
+export function windowIsVisible(): boolean {
   return document.visibilityState !== 'hidden'
 }
 

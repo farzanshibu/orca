@@ -15,7 +15,6 @@ export type PlacedMember = {
   needsYou: boolean
   tool: string
   task: TeamTask | undefined
-  hasMail: boolean
 }
 
 export function floorActivityLabel(activity: FloorActivity, paused: boolean): string {
