@@ -1,0 +1,83 @@
+# Fork-only build: an unsigned Windows installer for the current ref.
+# The upstream Windows release workflow targets stablyai/orca releases, so a
+# fork needs its own entry point. Dispatch it from the Actions tab or with
+# `gh workflow run windows-exe.yml --ref <branch>`.
+name: Windows exe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-exe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # pnpm must be on PATH before setup-node so the cache can locate the store.
+      - name: Setup pnpm
+        uses: pnpm/setup@v2
+        with:
+          install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            mobile/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Why: electron-builder's beforePack requires out/mobile-web, and that
+      # bundle resolves React Native and Expo from mobile/node_modules.
+      - name: Install mobile dependencies
+        uses: ./.github/actions/install-mobile-dependencies
+
+      # Why: without these the Windows SSH relay silently falls back to a slow
+      # PowerShell process scan on every remote host.
+      - name: Build Windows process-table addons for the relay
+        shell: bash
+        run: |
+          node config/scripts/build-windows-process-tree-relay-addon.mjs --arch=x64
+          node config/scripts/build-windows-process-tree-relay-addon.mjs --arch=arm64
+
+      - name: Build app
+        shell: bash
+        run: pnpm build:release
+        env:
+          ORCA_REQUIRE_RELAY_NATIVE_ADDONS: 'x64,arm64'
+
+      - name: Resolve build identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          short="$(git rev-parse --short=12 HEAD)"
+          version="$(node -p "require('./package.json').version")"
+          echo "ORCA_BUILD_COMMIT=$short" >> "$GITHUB_ENV"
+          echo "ORCA_LOCAL_BUILD_VERSION=${version}-local.$(date +%s).${short}" >> "$GITHUB_ENV"
+
+      - name: Package the installer
+        shell: bash
+        run: pnpm exec electron-builder --config config/electron-builder.config.cjs --win --publish never
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: orca-windows-exe
+          path: dist/orca-windows-setup.exe
+          if-no-files-found: error
+          retention-days: 14
