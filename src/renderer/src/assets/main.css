@@ -6,11 +6,20 @@
 @import './markdown-preview.css';
 @import './terminal.css';
 @import './mobile-page.css';
+@import './team-bureau.css';
 
 @font-face {
   font-family: 'Geist';
   src: url('./fonts/Geist-Variable.woff2') format('woff2');
   font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('./fonts/PressStart2P-Regular.woff2') format('woff2');
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
@@ -121,6 +130,19 @@
   --color-git-graph-lane-4: var(--git-graph-lane-4);
   --color-git-graph-lane-5: var(--git-graph-lane-5);
   --color-annotation-highlight: var(--annotation-highlight);
+  --color-bureau-paper: var(--bureau-paper);
+  --color-bureau-paper-deep: var(--bureau-paper-deep);
+  --color-bureau-ink: var(--bureau-ink);
+  --color-bureau-ink-soft: var(--bureau-ink-soft);
+  --color-bureau-rule: var(--bureau-rule);
+  --color-bureau-accent: var(--bureau-accent);
+  --color-bureau-accent-soft: var(--bureau-accent-soft);
+  --color-bureau-lemon: var(--bureau-lemon);
+  --color-bureau-mint: var(--bureau-mint);
+  --color-bureau-sky: var(--bureau-sky);
+  --color-bureau-lilac: var(--bureau-lilac);
+  --color-bureau-danger: var(--bureau-danger);
+  --font-pixel: 'Press Start 2P', var(--font-mono);
   --shadow-floating: 0 10px 24px rgb(0 0 0 / 0.18);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -286,6 +308,21 @@
   --office-screen: var(--color-sky-600);
   --office-glow: var(--color-zinc-50);
   --office-alert: var(--agent-question);
+  /* Team bureau: the paper-and-ink chrome around the office floor. Scoped to `.team-bureau`, and
+     mixed from the same palette as the floor so the room and its frame share one light. */
+  --bureau-paper: color-mix(in oklab, var(--color-amber-50) 72%, var(--background));
+  --bureau-paper-deep: color-mix(in oklab, var(--color-amber-100) 62%, var(--background));
+  --bureau-ink: color-mix(in oklab, var(--color-amber-950) 78%, var(--color-zinc-900));
+  --bureau-ink-soft: color-mix(in oklab, var(--bureau-ink) 58%, var(--bureau-paper));
+  --bureau-rule: color-mix(in oklab, var(--bureau-ink) 32%, var(--bureau-paper));
+  --bureau-shadow: color-mix(in oklab, var(--bureau-ink) 20%, transparent);
+  --bureau-accent: var(--office-accent);
+  --bureau-accent-soft: color-mix(in oklab, var(--bureau-accent) 16%, var(--bureau-paper));
+  --bureau-lemon: color-mix(in oklab, var(--color-amber-300) 82%, var(--bureau-paper));
+  --bureau-mint: color-mix(in oklab, var(--color-emerald-400) 78%, var(--bureau-paper));
+  --bureau-sky: color-mix(in oklab, var(--color-sky-400) 76%, var(--bureau-paper));
+  --bureau-lilac: color-mix(in oklab, var(--color-violet-300) 78%, var(--bureau-paper));
+  --bureau-danger: color-mix(in oklab, var(--color-red-500) 82%, var(--bureau-paper));
 }
 
 /* ── Dark Mode ───────────────────────────────────────── */
@@ -430,6 +467,20 @@
   --office-screen: var(--color-sky-500);
   --office-glow: var(--color-zinc-100);
   --office-alert: var(--agent-question);
+  /* The bureau after dark: the same paper stock under lamplight, not a different room. */
+  --bureau-paper: color-mix(in oklab, var(--color-zinc-900) 82%, var(--color-amber-950));
+  --bureau-paper-deep: color-mix(in oklab, var(--color-zinc-950) 76%, var(--color-amber-950));
+  --bureau-ink: color-mix(in oklab, var(--color-amber-50) 76%, var(--color-zinc-200));
+  --bureau-ink-soft: color-mix(in oklab, var(--bureau-ink) 52%, var(--bureau-paper));
+  --bureau-rule: color-mix(in oklab, var(--bureau-ink) 26%, var(--bureau-paper));
+  --bureau-shadow: color-mix(in oklab, var(--color-black) 55%, transparent);
+  --bureau-accent: var(--office-accent);
+  --bureau-accent-soft: color-mix(in oklab, var(--bureau-accent) 22%, var(--bureau-paper));
+  --bureau-lemon: color-mix(in oklab, var(--color-amber-300) 62%, var(--bureau-paper));
+  --bureau-mint: color-mix(in oklab, var(--color-emerald-400) 58%, var(--bureau-paper));
+  --bureau-sky: color-mix(in oklab, var(--color-sky-400) 58%, var(--bureau-paper));
+  --bureau-lilac: color-mix(in oklab, var(--color-violet-300) 56%, var(--bureau-paper));
+  --bureau-danger: color-mix(in oklab, var(--color-red-400) 66%, var(--bureau-paper));
 }
 
 .plugin-security-chrome {

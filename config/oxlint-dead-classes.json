@@ -30,6 +30,7 @@
           "error",
           {
             "allow": [
+              "bureau-*",
               "comment-md-*",
               "compact-agent-*",
               "feature-wall-*",
@@ -57,6 +58,7 @@
               "scrollbar-sleek",
               "scrollbar-sleek-lg",
               "scrollbar-sleek-parent",
+              "team-bureau",
               "toaster",
               "worktree-sidebar-scrollbar",
               "xterm-*"

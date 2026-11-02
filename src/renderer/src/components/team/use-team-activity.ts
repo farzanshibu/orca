@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { useAppStore } from '@/store'
 import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
 import {
   hasRuntimeRpcErrorCode,
@@ -86,7 +85,8 @@ export function useTeamActivity({
   snapshot,
   refresh
 }: Pick<TeamPageState, 'target' | 'snapshot' | 'refresh'>): TeamActivity {
-  const floorVisible = useAppStore((s) => s.teamPageTab === 'floor')
+  // The floor is the workspace's main surface now, so events always become movement.
+  const floorVisible = true
   const windowVisible = useSyncExternalStore(subscribeToWindowVisibility, windowIsVisible)
   const visibility = useRef({ floorVisible, windowVisible })
   const latestRefresh = useRef(refresh)

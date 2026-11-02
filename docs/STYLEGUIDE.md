@@ -106,6 +106,10 @@ Orca uses shadows sparingly. Three levels in practice:
 
 Don't add a fourth level. If something needs more emphasis than "floating," you're probably reaching for the focus `ring` instead.
 
+### Scoped skins
+
+The Team bureau is the one sanctioned exception: its pixel-office look uses a hard offset shadow (`--bureau-shadow-hard`), the `--font-pixel` display face, and 2px ink rules, all scoped under `.team-bureau`. Those values stay in `team-bureau.css` and the `--bureau-*` tokens in `main.css` — never copy them into other surfaces.
+
 ## Components
 
 Use the shadcn primitives in `src/renderer/src/components/ui/` before writing anything custom. The shadcn-style wrappers in this folder follow a consistent pattern:

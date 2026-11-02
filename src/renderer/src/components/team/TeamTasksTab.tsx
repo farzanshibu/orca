@@ -20,13 +20,15 @@ export function TeamTasksTab({
   snapshot,
   now,
   pendingActions,
-  act
+  act,
+  onOpenTask
 }: {
   target: RuntimeClientTarget
   snapshot: TeamSnapshot
   now: number
   pendingActions: readonly string[]
   act: TeamAct
+  onOpenTask?: (task: TeamTask) => void
 }): React.JSX.Element {
   const team = snapshot.team.id
   const support = useTeamFanoutSupport(target)
@@ -106,6 +108,7 @@ export function TeamTasksTab({
           void act(() => closeTeamGoal(target, { team, goal: goal.id }), teamGoalActionKey(goal.id))
         }
         onCancelGoal={setCancelling}
+        onOpenTask={onOpenTask}
       />
       {cancelling ? (
         <TeamGoalCancelDialog

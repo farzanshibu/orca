@@ -72,6 +72,43 @@ function bundle(
   }
 }
 
+const DESIGNER_BUNDLE = bundle(
+  'designer',
+  'Designer',
+  'Own the look and feel. Build screens from the design system, check every state, and hand engineering the assets and specs it needs.',
+  { skills: ['design-system', 'accessibility'], connections: ['chrome-devtools', 'fetch'] }
+)
+
+const SOFTWARE_ENGINEER_BUNDLE = bundle(
+  'software-engineer',
+  'Software Engineer',
+  'Implement assigned tasks end to end with tests. Keep changes small, read the docs first, and report what changed and what is left.',
+  { skills: ['context7-docs', 'code-review'], connections: ['github', 'dbhub'] },
+  { agent: 'codex' }
+)
+
+const PRODUCT_MANAGER_BUNDLE = bundle(
+  'product-manager',
+  'Product Manager',
+  'Turn goals into a short brief with acceptance criteria, file the tickets, and keep the board honest about priority and scope.',
+  { skills: ['prd-writing'], connections: ['github', 'brave-search'] }
+)
+
+const FRONTEND_DEVELOPER_BUNDLE = bundle(
+  'frontend-developer',
+  'Frontend Developer',
+  'Build and fix UI. Follow the style guide, verify in the running app, and cover loading, empty and error states before calling it done.',
+  { skills: ['context7-docs', 'playwright'], connections: ['playwright'] }
+)
+
+/** The template gallery in Capabilities: one click hires an agent with this bundle. */
+export const TEAM_AGENT_TEMPLATES: readonly TeamRoleBundle[] = [
+  DESIGNER_BUNDLE,
+  SOFTWARE_ENGINEER_BUNDLE,
+  PRODUCT_MANAGER_BUNDLE,
+  FRONTEND_DEVELOPER_BUNDLE
+]
+
 /** One-click member setups: a role, a brief, and the grants that role usually needs. */
 export const TEAM_ROLE_BUNDLES: readonly TeamRoleBundle[] = [
   bundle(
@@ -137,7 +174,8 @@ export const TEAM_ROLE_BUNDLES: readonly TeamRoleBundle[] = [
     'Triage',
     'Read incoming issues and alerts, deduplicate them, label priority, and turn actionable ones into tasks for the manager.',
     { connections: ['github', 'linear', 'jira'] }
-  )
+  ),
+  ...TEAM_AGENT_TEMPLATES
 ]
 
 export const TEAM_HIRE_TEMPLATE_SPEC = 'orca/team-hire@1'

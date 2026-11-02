@@ -139,6 +139,8 @@ export function TeamOfficeFloor({
   activity,
   attention,
   goals,
+  selectedMemberId = null,
+  showRoster = true,
   onOpenRoom,
   onAddMember
 }: {
@@ -149,6 +151,10 @@ export function TeamOfficeFloor({
   activity: Pick<TeamActivity, 'live' | 'epoch'>
   attention: TeamAttention
   goals: readonly TeamGoal[] | undefined
+  /** Stays ringed while the Command Center shows this member. */
+  selectedMemberId?: string | null
+  /** Off inside the workspace, where the agent strip already lists everyone. */
+  showRoster?: boolean
   onOpenRoom: (memberId: string) => void
   /** `prefill` is set when a vacant desk was clicked: that pod's role, or the manager's office. */
   onAddMember: (prefill?: DeskHirePrefill) => void
@@ -157,7 +163,13 @@ export function TeamOfficeFloor({
   const { plan, seating } = useOfficeFloorPlan(frameRef, members)
   // Null except while a rendered probe drives the floor with its own clock and events.
   const proof = useOfficeProof()
-  const highlighted = useHighlightedTeamMemberIds()
+  const pulsed = useHighlightedTeamMemberIds()
+  const highlighted = useMemo(() => {
+    if (!selectedMemberId) {
+      return pulsed
+    }
+    return new Set([...pulsed, selectedMemberId])
+  }, [pulsed, selectedMemberId])
   const thoughts = useFloorThoughts(members)
   const toolByPane = useAppStore(
     useShallow((state) =>
@@ -317,7 +329,9 @@ export function TeamOfficeFloor({
           </div>
         ) : null}
       </div>
-      <FloorRoster placed={ordered} onOpenRoom={onOpenRoom} onAddMember={() => onAddMember()} />
+      {showRoster ? (
+        <FloorRoster placed={ordered} onOpenRoom={onOpenRoom} onAddMember={() => onAddMember()} />
+      ) : null}
     </div>
   )
 }

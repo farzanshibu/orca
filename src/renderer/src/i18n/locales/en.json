@@ -18501,14 +18501,21 @@
   },
   "team": {
     "sidebar": {
-      "label": "Team"
+      "label": "Team",
+      "brain": "Team brain",
+      "live": "{{count}} live",
+      "members": "Members",
+      "nav": "Team sections",
+      "openMember": "Open {{name}} · {{status}}"
     },
     "activity": {
       "unverifiable": "Terminal not found; it may still be running",
       "workingOn": "Working on {{ref}}: {{title}}",
       "working": "Working",
       "permission": "Waiting for a permission prompt",
-      "idle": "Idle, waiting for work"
+      "idle": "Idle, waiting for work",
+      "stopped": "Out of office, waiting to start",
+      "waiting": "Waiting: {{reason}}"
     },
     "badge": {
       "manager": "Manager"
@@ -18517,11 +18524,18 @@
       "spend": "Spend",
       "tokens": "{{tokens}} tokens",
       "queued": "{{count}} queued",
+      "tickets": "{{count}} tickets",
+      "openAgent": "Open agent",
       "openRoom": "Open room",
       "stop": "Stop",
       "start": "Start",
       "resume": "Resume",
-      "pause": "Pause"
+      "pause": "Pause",
+      "moreActions": "More actions for {{name}}",
+      "edit": "Edit member",
+      "remove": "Remove member",
+      "spendCap": "{{spend}} / {{cap}}",
+      "tokenCap": "{{tokens}} / {{cap}} tokens"
     },
     "room": {
       "empty": "No team mail to or from this member yet.",
@@ -18537,6 +18551,18 @@
       "noTerminal": "Start this member to see its live terminal.",
       "capabilities": "Capabilities"
     },
+    "monitor": {
+      "lead": "Lead",
+      "context": "Context",
+      "contextGauge": "Tokens against the member cap",
+      "noTokens": "No tokens spent yet",
+      "tokensOfCap": "{{tokens}} tokens"
+    },
+    "strip": {
+      "label": "Agents",
+      "select": "Open the monitor for {{name}}",
+      "openAgent": "Open {{name}}"
+    },
     "inbox": {
       "answerPlaceholder": "Your answer…",
       "answer": "Answer",
@@ -18550,7 +18576,18 @@
       "external": "From outside",
       "noExternal": "Nothing from automations, webhooks, or Orca yet.",
       "permission": "Waiting at a permission prompt in its terminal.",
-      "noChatter": "No messages between agents yet."
+      "noChatter": "No messages between agents yet.",
+      "all": "All routed messages",
+      "askMe": "Ask me",
+      "noRouted": "No routed messages yet.",
+      "orTypeAnswer": "Or type an answer…",
+      "question": "The team has a question",
+      "subtitle": "{{count}} waiting on you",
+      "views": "Inbox views",
+      "webhookHint": "Webhooks, automations and Orca itself post into the team. Turn endpoints on in Automations.",
+      "webhooks": "Webhooks",
+      "webhookTitle": "Outside triggers land here",
+      "youAnswered": "You answered"
     },
     "orchestrator": {
       "noCap": "No $ cap",
@@ -18567,7 +18604,10 @@
       "noRouting": "No routing yet.",
       "noTokenCap": "No token cap",
       "cancelClosing": "Call off closing time",
-      "closingTime": "Closing time"
+      "closingTime": "Closing time",
+      "capTokens": "Token cap",
+      "capUsd": "Dollar cap",
+      "managerCap": "Manager cap"
     },
     "page": {
       "title": "Team",
@@ -18585,6 +18625,15 @@
       "addManager": "Add a manager",
       "moreActions": "More team actions"
     },
+    "commandCenter": {
+      "title": "Command Center",
+      "sections": "Command Center sections",
+      "settings": "Team settings",
+      "wholeTeam": "Whole team"
+    },
+    "workspace": {
+      "resize": "Resize the Command Center"
+    },
     "tab": {
       "agents": "Agents",
       "orchestrator": "Orchestrator",
@@ -18593,7 +18642,29 @@
       "inbox": "Inbox",
       "automations": "Automations",
       "memory": "Memory",
-      "floor": "Floor"
+      "capabilities": "Capabilities",
+      "temps": "Temps",
+      "floor": "Floor",
+      "monitor": "Monitor",
+      "askMe": "Ask me",
+      "triggers": "Triggers",
+      "graph": "Graph",
+      "activity": "Activity",
+      "skills": "Skills",
+      "workers": "Workers",
+      "manager": "Manager",
+      "settings": "Settings"
+    },
+    "agents": {
+      "title": "On the floor",
+      "live": "{{count}} live · {{total}} on the floor",
+      "subtitle": "{{count}} agents · {{live}} live"
+    },
+    "sheet": {
+      "noMember": "This agent is no longer on the floor.",
+      "tickets": "Tickets",
+      "noTickets": "No ticket has been assigned to this agent.",
+      "queued": "{{count}} queued"
     },
     "create": {
       "title": "New team",
@@ -18615,7 +18686,14 @@
       "manager": "This member runs the team",
       "submit": "Add member",
       "bundle": "Role bundle",
-      "bundlePlaceholder": "Start from a role…"
+      "bundlePlaceholder": "Start from a role…",
+      "editTitle": "Edit member",
+      "editDescription": "The new details apply the next time this member starts.",
+      "save": "Save changes",
+      "removeTitle": "Remove member",
+      "removeDescription": "This stops {{name}} and takes it off the team. Its worktree stays on disk.",
+      "removeCancel": "Cancel",
+      "removeSubmit": "Remove"
     },
     "tasks": {
       "todo": "To do",
@@ -18627,7 +18705,21 @@
       "add": "Add task",
       "empty": "No goals or tasks yet. Use New goal to hand the manager something to plan, or add a single task above.",
       "noGoalLane": "Tasks without a goal",
-      "goalUnplanned": "No tasks filed under this goal yet."
+      "goalUnplanned": "No tasks filed under this goal yet.",
+      "subtitle": "{{count}} open tickets on the board"
+    },
+    "taskDetail": {
+      "title": "Task {{ref}}",
+      "untitled": "Untitled task",
+      "status": "Status",
+      "kind": "Kind",
+      "assignee": "Assignee",
+      "goal": "Goal",
+      "created": "Created",
+      "completed": "Completed",
+      "spec": "Spec",
+      "depends": "Depends on",
+      "noDeps": "No dependencies."
     },
     "goal": {
       "title": "New goal",
@@ -18707,7 +18799,31 @@
       "compactOff": "Off",
       "save": "Save",
       "webhookPost": "POST {{url}}",
-      "webhookAuth": "Authorization: Bearer {{token}}"
+      "webhookAuth": "Authorization: Bearer {{token}}",
+      "addMission": "Add mission by hand",
+      "clock": "Floor clock",
+      "clockLabel": "Local time {{time}}",
+      "dueNow": "due now",
+      "inHours": "in {{count}} h",
+      "inMinutes": "in {{count}} min",
+      "lastRun": "Last run",
+      "never": "Never",
+      "nextRun": "Next: {{name}} · {{when}}",
+      "nextRunLabel": "Next run",
+      "noNextRun": "No enabled mission is scheduled.",
+      "notScheduled": "Not scheduled",
+      "off": "Paused",
+      "on": "Scheduled",
+      "removeShort": "Remove",
+      "subtitle": "Scheduled missions, context rules and webhooks that run the floor.",
+      "tileCompact": "/compact at {{tokens}}",
+      "tileContext": "Context",
+      "tileMissions": "{{enabled}} of {{total}}",
+      "tileOff": "Off",
+      "tileScheduled": "Scheduled",
+      "tileWebhook": "Webhook",
+      "webhookOffChip": "Off",
+      "webhookOn": "Listening"
     },
     "memory": {
       "search": "Search tickets, agents, and notes",
@@ -18716,7 +18832,89 @@
       "agents": "Agents",
       "notes": "Notes",
       "editing": "Editing {{note}}",
-      "save": "Save note"
+      "save": "Save note",
+      "graphHint": "Search above to light up the tickets, notes and members that match.",
+      "all": "Everything",
+      "center": "TEAM",
+      "filter": "Filter",
+      "graphLabel": "Team memory graph",
+      "loading": "Reading the floor’s notes…",
+      "matches": "{{count}} matches",
+      "noMatches": "Nothing matches.",
+      "noteBody": "Note body",
+      "subtitle": "What the floor knows, by topic and agent."
+    },
+    "capabilities": {
+      "noMember": "Hire an agent to give it skills and connections.",
+      "title": "Skills, bundles and connections",
+      "hint": "Grants apply the next time this agent starts: skills it may load, connections it may reach, and MCP servers it may run.",
+      "counts": "{{skills}} skills · {{connections}} connections",
+      "bundle": "Role bundle",
+      "editBundle": "Edit bundle",
+      "noBrief": "No role brief yet. Edit the member to describe how this agent works.",
+      "connectionCount": "{{count}} connections",
+      "mcpCount": "{{count}} MCP servers",
+      "perAgent": "Per agent",
+      "pickAgent": "Manage {{name}}",
+      "skillCount": "{{count}} skills",
+      "subtitle": "Skills, bundles and connections, managed per agent.",
+      "template": {
+        "designer": "Designer",
+        "frontendDeveloper": "Frontend Developer",
+        "productManager": "Product Manager",
+        "softwareEngineer": "Software Engineer"
+      },
+      "templates": "Agent templates",
+      "templatesHint": "Role bundles of skills and MCP servers — pick one to prefill a hire."
+    },
+    "temps": {
+      "hireTitle": "Hire a temp",
+      "hireHint": "Give it one job. It starts, finishes that ticket, and leaves the floor on its own.",
+      "name": "Name",
+      "namePlaceholder": "Audit the migration",
+      "agent": "Agent",
+      "job": "The one job",
+      "jobPlaceholder": "What should it finish before it goes?",
+      "hire": "Hire temp",
+      "title": "On loan",
+      "empty": "No temps on the floor. Hire one for a single job and it leaves when the job is done.",
+      "badge": "Temp",
+      "noJob": "No ticket filed yet.",
+      "open": "Open",
+      "retire": "Retire now",
+      "autoRetire": "A temp leaves the floor as soon as every ticket it owns has finished.",
+      "phase": {
+        "hired": "Hired, waiting for its job",
+        "working": "On the job",
+        "paused": "Paused",
+        "off": "Out of office",
+        "done": "Job done",
+        "failed": "Job failed"
+      },
+      "elapsed": "{{time}} on the job",
+      "hours": "{{count}}h",
+      "hoursMinutes": "{{hours}}h {{minutes}}m",
+      "minutes": "{{count}}m",
+      "progress": "Job progress",
+      "subtitle": "Temporary agents for one job, gone when it is done."
+    },
+    "settings": {
+      "title": "Team settings",
+      "description": "Charter, status and how the floor runs.",
+      "identity": "Identity",
+      "nameLocked": "The host does not rename a team yet. Its task prefix is {{prefix}}.",
+      "status": "Status",
+      "members": "Members",
+      "manager": "Manager",
+      "none": "None yet",
+      "charterSection": "Charter",
+      "charterHint": "The standing brief every member of this team starts from.",
+      "charterPlaceholder": "What this team is for",
+      "saveCharter": "Save charter",
+      "running": "Running",
+      "pausedHint": "The team is paused and takes no new work.",
+      "activeHint": "The team is active. Pausing stops new work but keeps every member seated.",
+      "closingHint": "Closing time asks every member to wrap up and stop."
     },
     "floor": {
       "office": "Office",
@@ -18894,6 +19092,30 @@
       "system": "Orca",
       "agent": "Another agent",
       "team": "Team"
+    },
+    "brain": {
+      "breakerOk": "All clear",
+      "breakerTripped": "{{count}} tripped",
+      "floor": "Office floor",
+      "graph": "The floor and its orchestrator",
+      "live": "{{count}} live · {{tasks}} open tickets",
+      "managerHint": "The manager reads the board, dispatches tickets and routes every question.",
+      "orchestrator": "Orchestrator",
+      "spend": "{{spend}} spent",
+      "spendGauge": "Team spend against its cap",
+      "spendOfCap": "{{spend}} of {{cap}} cap",
+      "subtitle": "One agent runs the others for {{team}}.",
+      "tickets": "{{count}} tickets",
+      "title": "Team brain"
+    },
+    "statusChip": {
+      "done": "Done",
+      "idle": "Idle",
+      "needsYou": "Needs you",
+      "paused": "Paused",
+      "thinking": "Thinking",
+      "unverifiable": "No recent update",
+      "working": "Working"
     }
   }
 }

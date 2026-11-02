@@ -2847,6 +2847,67 @@
       }
     }
   },
+  "team": {
+    "agents": {
+      "title": "On the floor"
+    },
+    "badge": {
+      "manager": "Manager"
+    },
+    "capabilities": {
+      "counts": "{{skills}} skills · {{connections}} connections",
+      "title": "Skills, bundles and connections"
+    },
+    "card": {
+      "tickets": "{{count}} tickets"
+    },
+    "commandCenter": {
+      "sections": "Command Center sections",
+      "title": "Command Center",
+      "wholeTeam": "Whole team"
+    },
+    "feed": {
+      "collapse": "Hide activity",
+      "expand": "Show activity"
+    },
+    "inbox": {
+      "chatter": "Between agents",
+      "external": "From outside",
+      "gate": "Decision gate",
+      "noChatter": "No messages between agents yet.",
+      "waiting": "Waiting on you"
+    },
+    "memory": {
+      "graphHint": "Search above to light up the tickets, notes and members that match."
+    },
+    "orchestrator": {
+      "notTripped": "No breaker has tripped.",
+      "spendVsCap": "Spend {{spend}} of cap {{cap}}",
+      "teamSpend": "Team spend {{spend}}",
+      "title": "Orchestrator"
+    },
+    "strip": {
+      "label": "Agents",
+      "openAgent": "Open {{name}}",
+      "select": "Open the monitor for {{name}}"
+    },
+    "tab": {
+      "activity": "Activity",
+      "askMe": "Ask me",
+      "floor": "Floor",
+      "graph": "Graph",
+      "inboxCount": "Inbox ({{count}})",
+      "manager": "Manager",
+      "monitor": "Monitor",
+      "orchestrator": "Orchestrator",
+      "skills": "Skills",
+      "triggers": "Triggers",
+      "workers": "Workers"
+    },
+    "workspace": {
+      "resize": "Resize the Command Center"
+    }
+  },
   "worktreeJumpPalette": {
     "filter": {
       "chipOverflow": "+{{value0}}",

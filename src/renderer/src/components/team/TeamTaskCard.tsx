@@ -68,7 +68,8 @@ export function TeamTaskCard({
   assignees,
   busy,
   note,
-  onAssign
+  onAssign,
+  onOpen
 }: {
   task: TeamTask
   owner: TeamMember | undefined
@@ -78,15 +79,27 @@ export function TeamTaskCard({
   /** Why the task has not started, or what the last assignment did. */
   note: TeamAssignNote | null
   onAssign: (task: TeamTask, memberId: string | null) => void
+  onOpen?: (task: TeamTask) => void
 }): React.JSX.Element {
   const ownerName = owner?.display_name ?? translate('team.tasks.unassigned', 'Unassigned')
+  const headline = task.task_title ?? task.spec
   return (
     <div className="rounded-md border border-border bg-card p-2.5 shadow-xs">
       <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
         <span className="font-mono">{task.ref ?? task.id}</span>
-        {task.status === 'failed' ? <span>{teamTaskStatusLabel(task.status)}</span> : null}
+        <span className="bureau-chip">{teamTaskStatusLabel(task.status)}</span>
       </div>
-      <div className="mt-1 line-clamp-3 text-[13px]">{task.task_title ?? task.spec}</div>
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={() => onOpen(task)}
+          className="mt-1 line-clamp-3 text-left text-[13px] hover:underline"
+        >
+          {headline}
+        </button>
+      ) : (
+        <div className="mt-1 line-clamp-3 text-[13px]">{headline}</div>
+      )}
       <div className="mt-1.5 text-[12px] text-muted-foreground">
         {assignees.length > 0 ? (
           <OwnerMenu

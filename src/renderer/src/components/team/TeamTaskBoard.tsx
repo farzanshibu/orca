@@ -52,6 +52,7 @@ export type TeamTaskBoardProps = {
   onAssign: (task: TeamTask, memberId: string | null) => void
   onCloseGoal: (goal: TeamBoardGoal) => void
   onCancelGoal: (goal: TeamBoardGoal) => void
+  onOpenTask?: (task: TeamTask) => void
 }
 
 function cardNote(
@@ -83,8 +84,8 @@ export function TeamTaskBoard(props: TeamTaskBoardProps): React.JSX.Element {
   const hasGoals = lanes.some((lane) => lane.goal)
   return (
     <div className="scrollbar-sleek min-h-0 flex-1 overflow-auto">
-      <div className="flex min-w-[880px] flex-col gap-3">
-        <div className="sticky top-0 z-10 grid grid-cols-4 gap-3 bg-background px-2 py-1">
+      <div className="flex min-w-0 flex-col gap-3">
+        <div className="sticky top-0 z-10 hidden grid-cols-4 gap-3 bg-background px-2 py-1 @3xl/team-dock:grid">
           {TEAM_BOARD_COLUMNS.map((column) => (
             <div key={column} className="flex items-center gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
@@ -120,7 +121,7 @@ export function TeamTaskBoard(props: TeamTaskBoardProps): React.JSX.Element {
                 {translate('team.tasks.goalUnplanned', 'No tasks filed under this goal yet.')}
               </p>
             ) : null}
-            <div className="grid grid-cols-4 gap-3 px-2 pb-2">
+            <div className="grid grid-cols-1 gap-2 px-2 pb-2 @sm/team-dock:grid-cols-2 @3xl/team-dock:grid-cols-4">
               {TEAM_BOARD_COLUMNS.map((column) => (
                 <div key={column} className="flex min-w-0 flex-col gap-2">
                   {lane.cards
@@ -136,6 +137,7 @@ export function TeamTaskBoard(props: TeamTaskBoardProps): React.JSX.Element {
                           busy={pendingActions.includes(teamTaskActionKey(task.id))}
                           note={cardNote(task, owner, props)}
                           onAssign={props.onAssign}
+                          onOpen={props.onOpenTask}
                         />
                       )
                     })}

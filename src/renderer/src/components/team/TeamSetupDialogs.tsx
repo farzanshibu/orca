@@ -28,6 +28,7 @@ import {
 import { translate } from '@/i18n/i18n'
 import { toTeamSlug } from '../../../../shared/team-slug'
 import type { TeamMemberDraft } from './team-runtime-client'
+import type { TeamMember } from './team-snapshot-types'
 
 function Field({
   label,
@@ -109,23 +110,28 @@ export function TeamMemberDialog({
   open,
   hasManager,
   initial,
+  editing,
   busy,
   onOpenChange,
-  onAdd
+  onSubmit
 }: {
   open: boolean
   hasManager: boolean
-  busy: boolean
-  /** Prefills the form, as a role bundle does. */
+  /** Prefills the form, as a role bundle does. Ignored while `editing`. */
   initial?: Partial<TeamMemberDraft>
+  /** The member being edited, which changes the title, the fields and what a submit means. */
+  editing?: TeamMember
+  busy: boolean
   onOpenChange: (open: boolean) => void
-  onAdd: (draft: TeamMemberDraft) => Promise<boolean>
+  onSubmit: (draft: TeamMemberDraft) => Promise<boolean>
 }): React.JSX.Element {
-  const [displayName, setDisplayName] = useState(initial?.displayName ?? '')
-  const [role, setRole] = useState(initial?.role ?? '')
-  const [brief, setBrief] = useState(initial?.brief ?? '')
-  const [agent, setAgent] = useState(initial?.agent ?? 'claude')
-  const [model, setModel] = useState(initial?.model ?? '')
+  const [displayName, setDisplayName] = useState(
+    editing?.display_name ?? initial?.displayName ?? ''
+  )
+  const [role, setRole] = useState(editing?.role_slug ?? initial?.role ?? '')
+  const [brief, setBrief] = useState(editing?.role_brief ?? initial?.brief ?? '')
+  const [agent, setAgent] = useState(editing?.agent ?? initial?.agent ?? 'claude')
+  const [model, setModel] = useState(editing?.model ?? initial?.model ?? '')
   const [manager, setManager] = useState(!hasManager && (initial?.manager ?? false))
   const [capabilities, setCapabilities] = useState<TeamMemberCapabilities>(
     initial?.capabilities ?? EMPTY_TEAM_MEMBER_CAPABILITIES
@@ -146,40 +152,53 @@ export function TeamMemberDialog({
       setDisplayName(bundle.label)
     }
   }
-  const slug = toTeamSlug(displayName)
+  // A slug is fixed once hired, so an edit keeps the one the member already answers to.
+  const slug = editing?.slug ?? toTeamSlug(displayName)
   const roleSlug = toTeamSlug(role)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{translate('team.member.title', 'Add a member')}</DialogTitle>
+          <DialogTitle>
+            {editing
+              ? translate('team.member.editTitle', 'Edit member')
+              : translate('team.member.title', 'Add a member')}
+          </DialogTitle>
           <DialogDescription>
-            {translate(
-              'team.member.description',
-              'Members start in their own worktree with this role brief.'
-            )}
+            {editing
+              ? translate(
+                  'team.member.editDescription',
+                  'The new details apply the next time this member starts.'
+                )
+              : translate(
+                  'team.member.description',
+                  'Members start in their own worktree with this role brief.'
+                )}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <Field
-            label={translate('team.member.bundle', 'Role bundle')}
-            htmlFor="team-member-bundle"
-          >
-            <Select value={bundleId} onValueChange={applyBundle}>
-              <SelectTrigger id="team-member-bundle" className="w-full">
-                <SelectValue
-                  placeholder={translate('team.member.bundlePlaceholder', 'Start from a role…')}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {TEAM_ROLE_BUNDLES.map((bundle) => (
-                  <SelectItem key={bundle.id} value={bundle.id}>
-                    {bundle.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+          {/* A bundle seeds a new hire; it would overwrite an edit, so it only appears when adding. */}
+          {editing ? null : (
+            <Field
+              label={translate('team.member.bundle', 'Role bundle')}
+              htmlFor="team-member-bundle"
+            >
+              <Select value={bundleId} onValueChange={applyBundle}>
+                <SelectTrigger id="team-member-bundle" className="w-full">
+                  <SelectValue
+                    placeholder={translate('team.member.bundlePlaceholder', 'Start from a role…')}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEAM_ROLE_BUNDLES.map((bundle) => (
+                    <SelectItem key={bundle.id} value={bundle.id}>
+                      {bundle.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
           <Field label={translate('team.member.name', 'Name')} htmlFor="team-member-name">
             <Input
               id="team-member-name"
@@ -228,7 +247,7 @@ export function TeamMemberDialog({
               />
             </Field>
           </div>
-          {!hasManager ? (
+          {!hasManager && !editing ? (
             <div className="flex items-center gap-2">
               <Switch id="team-member-manager" checked={manager} onCheckedChange={setManager} />
               <Label htmlFor="team-member-manager">
@@ -242,7 +261,7 @@ export function TeamMemberDialog({
             disabled={busy || !slug || !roleSlug}
             onClick={() =>
               slug && roleSlug
-                ? void onAdd({
+                ? void onSubmit({
                     slug,
                     displayName,
                     role: roleSlug,
@@ -255,7 +274,9 @@ export function TeamMemberDialog({
                 : undefined
             }
           >
-            {translate('team.member.submit', 'Add member')}
+            {editing
+              ? translate('team.member.save', 'Save changes')
+              : translate('team.member.submit', 'Add member')}
           </Button>
         </DialogFooter>
       </DialogContent>

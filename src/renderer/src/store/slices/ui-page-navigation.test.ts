@@ -741,7 +741,7 @@ describe('createUISlice space navigation', () => {
 describe('createUISlice team page tab', () => {
   it('keeps the selected tab while the Team page is closed', () => {
     const store = createUIStore()
-    expect(store.getState().teamPageTab).toBe('floor')
+    expect(store.getState().teamPageTab).toBe('orchestrator')
 
     store.getState().openTeamPage()
     store.getState().setTeamPageTab('inbox')

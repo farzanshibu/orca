@@ -9,7 +9,7 @@ import type {
 } from '../../../../shared/team-goal'
 import type { TeamMissionSchedule } from '../../../../shared/team-mission-schedule'
 import type { TeamTaskAssignResult } from '../../../../shared/team-task-assignment'
-import type { TeamListEntry, TeamLogMessage, TeamSnapshot } from './team-snapshot-types'
+import type { TeamListEntry, TeamLogMessage, TeamMember, TeamSnapshot } from './team-snapshot-types'
 
 type TeamRef = { team: string }
 
@@ -70,8 +70,22 @@ export type TeamMemberDraft = {
   capabilities?: TeamMemberCapabilities
 }
 
-export function addTeamMember(target: RuntimeClientTarget, team: string, draft: TeamMemberDraft) {
+export function addTeamMember(
+  target: RuntimeClientTarget,
+  team: string,
+  draft: TeamMemberDraft
+): Promise<{ member: TeamMember }> {
   return callRuntimeRpc(target, 'orchestration.teamMemberAdd', { team, ...draft })
+}
+
+/** The fields an edit can change. The slug and the manager flag are fixed once hired. */
+export type TeamMemberEditDraft = Omit<TeamMemberDraft, 'slug' | 'manager' | 'capabilities'>
+
+export function updateTeamMember(
+  target: RuntimeClientTarget,
+  params: TeamRef & { member: string } & TeamMemberEditDraft
+) {
+  return callRuntimeRpc(target, 'orchestration.teamMemberUpdate', params)
 }
 
 export type TeamMemberAction = 'Start' | 'Stop' | 'Pause' | 'Resume' | 'Remove'
@@ -265,7 +279,7 @@ export function writeTeamNote(
 
 export function createTeamTask(
   target: RuntimeClientTarget,
-  params: TeamRef & { title: string; spec?: string }
+  params: TeamRef & { title: string; spec?: string; assignee?: string }
 ) {
   return callRuntimeRpc<TeamTaskCreateResult>(target, 'orchestration.teamTaskCreate', params)
 }

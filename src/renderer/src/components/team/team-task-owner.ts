@@ -16,6 +16,21 @@ export function teamTaskOwner(
   return assignee ?? teamMemberForHandle(members, task.assignee_handle)
 }
 
+export function teamTaskSettled(task: Pick<TeamTask, 'status'>): boolean {
+  return task.status === 'completed' || task.status === 'failed'
+}
+
+/** Every ticket this member owns, open ones first so the sheet leads with what is left. */
+export function teamMemberOwnedTasks(
+  member: TeamMember,
+  tasks: readonly TeamTask[],
+  members: readonly TeamMember[]
+): TeamTask[] {
+  return tasks
+    .filter((task) => teamTaskOwner(task, members)?.id === member.id)
+    .sort((a, b) => Number(teamTaskSettled(a)) - Number(teamTaskSettled(b)))
+}
+
 /** The task a member is working right now: the host's answer, else the Dispatch on its handle. */
 export function teamMemberCurrentTask(
   member: Pick<TeamMember, 'current_task' | 'live_handle'>,

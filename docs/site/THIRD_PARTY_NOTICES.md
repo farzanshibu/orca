@@ -6,6 +6,13 @@ The Geist font files in `src/assets/fonts/` are Copyright (c) 2023 Vercel, in
 collaboration with basement.studio. They are distributed under the SIL Open
 Font License, Version 1.1. Source: <https://github.com/vercel/geist-font>.
 
+## Press Start 2P
+
+The Press Start 2P font file in `src/renderer/src/assets/fonts/` is Copyright
+(c) 2012, Cody "CodeMan38" Boisclair. It is distributed under the SIL Open Font
+License, Version 1.1. Source:
+<https://fonts.google.com/specimen/Press+Start+2P>.
+
 The full license text follows.
 
 ```text
