@@ -1,5 +1,14 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 const repoRoot = path.resolve(import.meta.dirname, '../..')
@@ -28,12 +37,41 @@ chmodSync(binaryPath, 0o755)
 createHelperApp()
 
 function buildUniversalBinary() {
-  const builtBinaries = universalTriples.map((triple) => {
-    run('swift', ['build', '-c', 'release', '--package-path', packagePath, '--triple', triple])
-    return path.join(packagePath, '.build', triple, 'release', 'orca-computer-use-macos')
-  })
-  mkdirSync(path.dirname(binaryPath), { recursive: true })
-  run('lipo', ['-create', ...builtBinaries, '-output', binaryPath])
+  const scratchRoot = mkdtempSync(path.join(tmpdir(), 'orca-computer-use-macos-'))
+  try {
+    const builtBinaries = universalTriples.map((triple) => {
+      const scratchPath = path.join(scratchRoot, triple)
+      run('swift', [
+        'build',
+        '-c',
+        'release',
+        '--package-path',
+        packagePath,
+        '--triple',
+        triple,
+        '--scratch-path',
+        scratchPath
+      ])
+      const candidates = [
+        path.join(scratchPath, 'release', 'orca-computer-use-macos'),
+        path.join(scratchPath, 'out', 'Products', 'Release', 'orca-computer-use-macos'),
+        path.join(packagePath, '.build', triple, 'release', 'orca-computer-use-macos')
+      ]
+      const built = candidates.find((candidate) => existsSync(candidate))
+      if (!built) {
+        console.error(`Missing built binary for ${triple}, tried:`)
+        for (const candidate of candidates) {
+          console.error(`- ${candidate}`)
+        }
+        process.exit(1)
+      }
+      return built
+    })
+    mkdirSync(path.dirname(binaryPath), { recursive: true })
+    run('lipo', ['-create', ...builtBinaries, '-output', binaryPath])
+  } finally {
+    rmSync(scratchRoot, { recursive: true, force: true })
+  }
 }
 
 function createHelperApp() {
