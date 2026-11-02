@@ -6,6 +6,13 @@ name: Windows exe
 
 on:
   workflow_dispatch:
+  # Why the push trigger: GitHub only addresses workflow_dispatch by a file on
+  # the default branch, and this branch is not merged there. Scoped to the
+  # workflow file so ordinary commits do not rebuild the installer.
+  push:
+    branches: [feat/team-office-win]
+    paths:
+      - .github/workflows/windows-exe.yml
 
 permissions:
   contents: read
