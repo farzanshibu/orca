@@ -27,6 +27,9 @@ jobs:
     timeout-minutes: 90
     env:
       NODE_OPTIONS: --max-old-space-size=4096
+      # Why: an unsigned local build must not claim the release publisher name,
+      # or its own updater would reject the next build.
+      ORCA_WIN_ADHOC: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -47,7 +50,12 @@ jobs:
             mobile/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: pnpm install --frozen-lockfile
 
       # Why: electron-builder's beforePack requires out/mobile-web, and that
       # bundle resolves React Native and Expo from mobile/node_modules.
@@ -72,19 +80,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          short="$(git rev-parse --short=12 HEAD)"
           version="$(node -p "require('./package.json').version")"
-          echo "ORCA_BUILD_COMMIT=$short" >> "$GITHUB_ENV"
-          echo "ORCA_LOCAL_BUILD_VERSION=${version}-local.$(date +%s).${short}" >> "$GITHUB_ENV"
+          echo "ORCA_BUILD_COMMIT=${{ github.sha }}" >> "$GITHUB_ENV"
+          echo "ORCA_ADHOC_BUILD_VERSION=${version}-adhoc.$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_ENV"
 
       - name: Package the installer
         shell: bash
-        run: pnpm exec electron-builder --config config/electron-builder.config.cjs --win --publish never
+        run: |
+          node config/scripts/ensure-native-runtime.mjs --runtime=electron
+          pnpm exec electron-builder --config config/electron-builder.config.cjs --win --publish never
 
       - name: Upload the installer
         uses: actions/upload-artifact@v4
         with:
-          name: orca-windows-exe
-          path: dist/orca-windows-setup.exe
+          name: orca-windows-setup
+          path: dist/*.exe
           if-no-files-found: error
           retention-days: 14
