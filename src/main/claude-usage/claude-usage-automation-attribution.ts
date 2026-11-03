@@ -1,5 +1,5 @@
 import type { AutomationRunUsage } from '../../shared/automations-types'
-import type { ClaudeUsagePersistedState } from './types'
+import type { ClaudeUsagePersistedState, ClaudeUsageSession } from './types'
 import { estimateCostUsd } from './claude-model-pricing'
 import { shouldForceAutomationUsageScan } from '../usage/automation-usage-scan-forcing'
 
@@ -90,9 +90,17 @@ export async function resolveAutomationRunUsage(
     )
   }
 
-  const session = candidates[0]
+  return summarizeProviderSessionUsage(candidates[0], input.worktreeId, collectedAt)
+}
+
+/** Tokens and API-equivalent cost of one session, scoped to `worktreeId` when it ran there. */
+export function summarizeProviderSessionUsage(
+  session: ClaudeUsageSession,
+  worktreeId: string | null,
+  collectedAt: number
+): AutomationRunUsage {
   const scopedLocations = session.locationBreakdown.filter(
-    (entry) => entry.worktreeId === input.worktreeId
+    (entry) => entry.worktreeId === worktreeId
   )
   const locations = scopedLocations.length > 0 ? scopedLocations : session.locationBreakdown
   const totals = locations.reduce(

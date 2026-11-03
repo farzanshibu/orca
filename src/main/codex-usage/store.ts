@@ -15,7 +15,10 @@ import type { Store } from '../persistence'
 import type { CodexUsagePersistedState } from './types'
 import type { AutomationUsageLookupInput } from './codex-automation-run-attribution'
 import { CODEX_USAGE_SCHEMA_VERSION, codexUsageProvider } from './codex-usage-provider'
-import { resolveCodexAutomationRunUsage } from './codex-automation-run-attribution'
+import {
+  resolveCodexAutomationRunUsage,
+  summarizeProviderSessionUsage
+} from './codex-automation-run-attribution'
 import { buildRecentSessions } from './codex-usage-session-rows'
 import { buildBreakdown, buildDaily, buildSummary } from './codex-usage-rollup-projections'
 import { UsageProviderStoreLifecycle } from '../usage/usage-provider-store-lifecycle'
@@ -135,6 +138,22 @@ export class CodexUsageStore extends UsageProviderStoreLifecycle<
   ): Promise<CodexUsageSessionRow[]> {
     await this.refresh(false)
     return buildRecentSessions(this.state, scope, range, limit)
+  }
+
+  /** Usage of exactly these provider sessions; missing ids are simply absent from the result. */
+  async getProviderSessionUsage(
+    sessions: readonly { sessionId: string; worktreeId: string | null }[]
+  ): Promise<AutomationRunUsage[]> {
+    if (!this.state.scanState.enabled || sessions.length === 0) {
+      return []
+    }
+    await this.refresh(false)
+    const collectedAt = Date.now()
+    const byId = new Map(this.state.sessions.map((session) => [session.sessionId, session]))
+    return sessions.flatMap(({ sessionId, worktreeId }) => {
+      const session = byId.get(sessionId)
+      return session ? [summarizeProviderSessionUsage(session, worktreeId, collectedAt)] : []
+    })
   }
 
   async getAutomationRunUsage(input: AutomationUsageLookupInput): Promise<AutomationRunUsage> {

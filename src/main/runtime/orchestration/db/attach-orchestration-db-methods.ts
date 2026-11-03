@@ -52,6 +52,13 @@ import { attachMigrateLegacyContractStorage } from './schema/migrate-legacy-cont
 import { attachSchemaMigrate } from './schema/migrate'
 import { attachSchemaColumnProbes } from './schema/schema-column-probes'
 import { attachTaskStore } from './tasks/task-store'
+import { attachTeamMemberSpendStore } from './teams/team-member-spend-store'
+import { attachTeamAutomationStore } from './teams/team-automation-store'
+import { attachTeamBoardStore } from './teams/team-board-store'
+import { attachTeamInboxStore } from './teams/team-inbox-store'
+import { attachTeamHireProposalStore } from './teams/team-hire-proposal-store'
+import { attachTeamMemberStore } from './teams/team-member-store'
+import { attachTeamStore } from './teams/team-store'
 import { attachTaskStatusTransition } from './tasks/task-status-transition'
 import { attachFederatedWorkerStartReconcile } from './worker-dispatch/federated-worker-start-reconcile'
 import { attachWorkerDispatchAbandon } from './worker-dispatch/worker-dispatch-abandon'
@@ -136,4 +143,11 @@ export function attachOrchestrationDbMethods(ctor: { prototype: object }): void 
   attachDecisionGateStore(ctor)
   attachCoordinatorRunStore(ctor)
   attachOrchestrationReset(ctor)
+  attachTeamStore(ctor)
+  attachTeamMemberStore(ctor)
+  attachTeamHireProposalStore(ctor)
+  attachTeamInboxStore(ctor)
+  attachTeamBoardStore(ctor)
+  attachTeamAutomationStore(ctor)
+  attachTeamMemberSpendStore(ctor)
 }

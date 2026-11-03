@@ -109,6 +109,8 @@ function fakes() {
       dispatch: { id: 'd_fail', depth: 0 },
       task: { id: 't1', spec: 'do the thing' }
     }),
+    getTeamByRunId: () => undefined,
+    findTeamMemberByTerminal: () => undefined,
     recordWorkerStage: () => {},
     prepareStartingWorkerAuthority: () => 'capability'
   } as unknown as OrchestrationDb

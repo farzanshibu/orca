@@ -2793,6 +2793,13 @@
       }
     }
   },
+  "team": {
+    "orchestrator": {
+      "noCap": "No cap",
+      "notTripped": "No member has hit its cap.",
+      "tripped": "{{name}} stopped at {{spend}} (cap {{cap}})"
+    }
+  },
   "worktreeJumpPalette": {
     "filter": {
       "chipOverflow": "+{{value0}}",

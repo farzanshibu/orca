@@ -51,6 +51,13 @@ import type { MigrateLegacyContractStorageMethods } from './schema/migrate-legac
 import type { SchemaMigrateMethods } from './schema/migrate'
 import type { SchemaColumnProbesMethods } from './schema/schema-column-probes'
 import type { TaskStoreMethods } from './tasks/task-store'
+import type { TeamMemberSpendStoreMethods } from './teams/team-member-spend-store'
+import type { TeamAutomationStoreMethods } from './teams/team-automation-store'
+import type { TeamBoardStoreMethods } from './teams/team-board-store'
+import type { TeamInboxStoreMethods } from './teams/team-inbox-store'
+import type { TeamHireProposalStoreMethods } from './teams/team-hire-proposal-store'
+import type { TeamMemberStoreMethods } from './teams/team-member-store'
+import type { TeamStoreMethods } from './teams/team-store'
 import type { TaskStatusTransitionMethods } from './tasks/task-status-transition'
 import type { FederatedWorkerStartReconcileMethods } from './worker-dispatch/federated-worker-start-reconcile'
 import type { WorkerDispatchAbandonMethods } from './worker-dispatch/worker-dispatch-abandon'
@@ -134,4 +141,11 @@ export type OrchestrationDbMethods = AttemptObservationStoreMethods &
   WorkerReportSettlementMethods &
   DecisionGateStoreMethods &
   CoordinatorRunStoreMethods &
-  OrchestrationResetMethods
+  OrchestrationResetMethods &
+  TeamStoreMethods &
+  TeamMemberStoreMethods &
+  TeamHireProposalStoreMethods &
+  TeamInboxStoreMethods &
+  TeamBoardStoreMethods &
+  TeamAutomationStoreMethods &
+  TeamMemberSpendStoreMethods

@@ -1,7 +1,7 @@
 import type { MessagePriority, MessageType, OrchestrationDb } from '../../../../orchestration/db'
 import type { OrcaRuntimeService } from '../../../../orca-runtime'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
-import { resolveGroupAddress } from '../../../../orchestration/groups'
+import { resolveGroupAddress, type TeamGroupMember } from '../../../../orchestration/groups'
 import { isEquivalentPaneKey } from '../../../../orchestration/db/pane-key-match'
 import { resolveBareOrchestrationRecipient } from './recipient-routing'
 import {
@@ -22,7 +22,10 @@ type SendReceipt = <T extends object>(receipt: T) => T & { warnings?: SendRecipi
 type GroupAgentSnapshot = OrchestrationAddressableAgent & { tabId?: string; leafId?: string }
 
 /** Run candidates already identify a durable mailbox. */
-type GroupCandidate = OrchestrationAddressableAgent & { mailbox?: { to: string; runId: string } }
+type GroupCandidate = OrchestrationAddressableAgent & {
+  mailbox?: { to: string; runId: string }
+  paneKey?: string | null
+}
 
 function listRunGroupCandidates(args: {
   db: OrchestrationDb
@@ -80,6 +83,7 @@ function listRunGroupCandidates(args: {
       {
         handle,
         worktreeId: row.worktreeId ?? '',
+        paneKey,
         ...(agentIdentity ? { agentIdentity } : {}),
         mailbox: coordinated
           ? { to: `run:${coordinated.id}`, runId: coordinated.id }
@@ -167,8 +171,23 @@ export async function sendGroupMessage(args: {
           agents,
           warnings: groupWarnings
         })
-  const handles = resolveGroupAddress(groupAddress, from, candidates, (handle: string) =>
-    runtime.getAgentStatusForHandle(handle)
+  // Only team addresses need the roster; other groups never touch team tables.
+  const teamGroup = /^@(role|member):/i.test(groupAddress)
+  const team = teamGroup && audienceRunId ? db.getTeamByRunId(audienceRunId) : undefined
+  const teamMembers: TeamGroupMember[] = team
+    ? db.listTeamMembers(team.id).map((member) => ({
+        slug: member.slug,
+        roleSlug: member.role_slug,
+        terminalHandle: member.terminal_handle,
+        paneKey: member.pane_key
+      }))
+    : []
+  const handles = resolveGroupAddress(
+    groupAddress,
+    from,
+    candidates,
+    (handle: string) => runtime.getAgentStatusForHandle(handle),
+    teamMembers
   )
   if (handles.length === 0) {
     // Preserve the recovery addresses even when every worker was skipped.

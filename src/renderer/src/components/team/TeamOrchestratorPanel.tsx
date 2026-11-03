@@ -1,0 +1,211 @@
+import React, { useState } from 'react'
+import { Moon, Pause, Play, ShieldAlert } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { translate } from '@/i18n/i18n'
+import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
+import { describeTeamMemberActivity } from './TeamAgentCard'
+import { TeamVoicePanel } from './TeamVoicePanel'
+import { callTeamClosingTime, setTeamMemberCap, updateTeam } from './team-runtime-client'
+import {
+  formatUsd,
+  teamMemberForHandle,
+  type TeamLogMessage,
+  type TeamMember,
+  type TeamSnapshot
+} from './team-snapshot-types'
+
+function CapEditor({
+  member,
+  onSave
+}: {
+  member: TeamMember
+  onSave: (capUsd: number | null, tokenCap: number | null) => Promise<boolean>
+}): React.JSX.Element {
+  const [value, setValue] = useState(member.spend_cap_usd?.toString() ?? '')
+  const [tokens, setTokens] = useState(member.token_cap?.toString() ?? '')
+  const parsed = value.trim() === '' ? null : Number(value)
+  const parsedTokens = tokens.trim() === '' ? null : Number(tokens)
+  const valid =
+    (parsed === null || (Number.isFinite(parsed) && parsed >= 0)) &&
+    (parsedTokens === null || (Number.isInteger(parsedTokens) && parsedTokens > 0))
+  return (
+    <div className="flex items-center gap-1.5">
+      <Input
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        inputMode="decimal"
+        placeholder={translate('team.orchestrator.noCap', 'No $ cap')}
+        className="h-7 w-24"
+      />
+      <Input
+        value={tokens}
+        onChange={(event) => setTokens(event.target.value)}
+        inputMode="numeric"
+        placeholder={translate('team.orchestrator.noTokenCap', 'No token cap')}
+        className="h-7 w-28"
+      />
+      <Button
+        size="xs"
+        variant="secondary"
+        disabled={!valid}
+        onClick={() => void onSave(parsed, parsedTokens)}
+      >
+        {translate('team.orchestrator.setCap', 'Set cap')}
+      </Button>
+    </div>
+  )
+}
+
+export function TeamOrchestratorPanel({
+  target,
+  snapshot,
+  log,
+  act
+}: {
+  target: RuntimeClientTarget
+  snapshot: TeamSnapshot
+  log: readonly TeamLogMessage[]
+  act: (mutation: () => Promise<unknown>) => Promise<boolean>
+}): React.JSX.Element {
+  const team = snapshot.team
+  const manager = snapshot.members.find((member) => member.is_manager)
+  const totalSpend = snapshot.members.reduce<number | null>(
+    (sum, member) => (member.spend_usd === null ? sum : (sum ?? 0) + member.spend_usd),
+    null
+  )
+  const tripped = snapshot.members.filter(
+    (member) => member.pause_reason !== null && member.pause_reason !== undefined
+  )
+  const routing = manager?.live_handle
+    ? log.filter(
+        (message) =>
+          message.from_handle === manager.live_handle ||
+          message.to_handle === manager.live_handle ||
+          message.to_handle === `run:${team.run_id}`
+      )
+    : log
+  const name = (handle: string) =>
+    teamMemberForHandle(snapshot.members, handle)?.display_name ??
+    (handle === `run:${team.run_id}` ? translate('team.orchestrator.manager', 'manager') : handle)
+  const paused = team.status === 'paused'
+  return (
+    <div className="grid min-h-0 flex-1 grid-cols-[minmax(280px,1fr)_2fr] gap-4">
+      <div className="scrollbar-sleek flex min-h-0 flex-col gap-4 overflow-y-auto">
+        <section className="space-y-2 rounded-xl border border-border bg-card p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+            {translate('team.orchestrator.title', 'Orchestrator')}
+          </div>
+          {manager ? (
+            <>
+              <div className="text-[14px] font-semibold">{manager.display_name}</div>
+              <p className="text-[13px]">{describeTeamMemberActivity(manager, undefined)}</p>
+              <div className="text-[12px] text-muted-foreground">
+                {translate('team.orchestrator.spendVsCap', 'Spend {{spend}} of cap {{cap}}', {
+                  spend: formatUsd(manager.spend_usd),
+                  cap: formatUsd(manager.spend_cap_usd)
+                })}
+              </div>
+              <CapEditor
+                key={manager.id}
+                member={manager}
+                onSave={(capUsd, tokenCap) =>
+                  act(() =>
+                    setTeamMemberCap(target, {
+                      team: team.id,
+                      member: manager.id,
+                      capUsd,
+                      tokenCap
+                    })
+                  )
+                }
+              />
+            </>
+          ) : (
+            <p className="text-[13px] text-muted-foreground">
+              {translate(
+                'team.orchestrator.noManager',
+                'This team has no manager yet. Add a member and mark it as manager.'
+              )}
+            </p>
+          )}
+        </section>
+        {manager ? (
+          <TeamVoicePanel target={target} teamId={team.id} manager={manager} log={log} act={act} />
+        ) : null}
+        <section className="space-y-2 rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+            <ShieldAlert className="size-3.5" />
+            {translate('team.orchestrator.breaker', 'Breaker')}
+          </div>
+          <div className="text-[13px]">
+            {translate('team.orchestrator.teamSpend', 'Team spend {{spend}}', {
+              spend: formatUsd(totalSpend)
+            })}
+          </div>
+          {tripped.length > 0 ? (
+            tripped.map((member) => (
+              <div key={member.id} className="text-[13px]">
+                {translate('team.orchestrator.trippedReason', '{{name}} stopped: {{reason}}', {
+                  name: member.display_name,
+                  reason: (member.pause_reason ?? '').replace('_', ' ')
+                })}
+              </div>
+            ))
+          ) : (
+            <p className="text-[12px] text-muted-foreground">
+              {translate('team.orchestrator.notTripped', 'No breaker has tripped.')}
+            </p>
+          )}
+          <Button
+            size="sm"
+            variant={paused ? 'default' : 'secondary'}
+            onClick={() =>
+              void act(() =>
+                updateTeam(target, { team: team.id, status: paused ? 'active' : 'paused' })
+              )
+            }
+          >
+            {paused ? <Play /> : <Pause />}
+            {paused
+              ? translate('team.orchestrator.resumeTeam', 'Resume the team')
+              : translate('team.orchestrator.pauseTeam', 'Pause the team')}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              void act(() => callTeamClosingTime(target, team.id, Boolean(team.closing_at)))
+            }
+          >
+            <Moon />
+            {team.closing_at
+              ? translate('team.orchestrator.cancelClosing', 'Call off closing time')
+              : translate('team.orchestrator.closingTime', 'Closing time')}
+          </Button>
+        </section>
+      </div>
+      <section className="flex min-h-0 flex-col rounded-xl border border-border bg-card p-4">
+        <div className="pb-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+          {translate('team.orchestrator.routingLog', 'Routing log')}
+        </div>
+        <div className="scrollbar-sleek min-h-0 flex-1 space-y-1 overflow-y-auto">
+          {routing.map((message) => (
+            <div key={message.id} className="rounded-md px-2 py-1.5 hover:bg-accent">
+              <div className="text-[12px] text-muted-foreground">
+                #{message.sequence} {name(message.from_handle)} → {name(message.to_handle)} ·{' '}
+                {message.type}
+              </div>
+              <div className="text-[13px]">{message.subject}</div>
+            </div>
+          ))}
+          {routing.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">
+              {translate('team.orchestrator.noRouting', 'No routing yet.')}
+            </p>
+          ) : null}
+        </div>
+      </section>
+    </div>
+  )
+}

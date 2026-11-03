@@ -34,6 +34,13 @@ export function createUiViewActions(set: UISliceSet, get: UISliceGet): Partial<U
         activeView: state.previousViewBeforeAutomations,
         worktreeNavHistoryIndex: rewindHistoryIndexPastView(state, 'automations')
       })),
+    openTeamPage: () =>
+      set((state) => ({
+        activeView: 'team',
+        previousViewBeforeTeam:
+          state.activeView === 'team' ? state.previousViewBeforeTeam : state.activeView
+      })),
+    closeTeamPage: () => set((state) => ({ activeView: state.previousViewBeforeTeam })),
     openSpacePage: () => {
       get().recordFeatureInteraction?.('workspace-cleanup')
       set((state) => ({
